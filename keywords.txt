@@ -1,0 +1,36 @@
+#######################################
+# Syntax Coloring Map SPI
+#######################################
+
+#######################################
+# Datatypes (KEYWORD1)
+#######################################
+
+btAudio	KEYWORD1
+DRC	KEYWORD1
+filter	KEYWORD1
+
+#######################################
+# Methods and Functions (KEYWORD2)
+#######################################
+begin	KEYWORD2
+end	KEYWORD2
+softKnee	KEYWORD2
+filter	KEYWORD2
+process	KEYWORD2
+createFilter	KEYWORD2
+stopFilter	KEYWORD2
+compress	KEYWORD2
+decompress	KEYWORD2
+volume	KEYWORD2
+record	KEYWORD2
+stopRecord	KEYWORD2
+postProc	KEYWORD2
+btAudio	KEYWORD2
+DRC	KEYWORD2
+
+#######################################
+# Constants (LITERAL1)
+#######################################
+lowpass	LITERAL1
+highpass	LITERAL1
