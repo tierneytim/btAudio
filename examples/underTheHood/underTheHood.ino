@@ -10,8 +10,6 @@
 // the audio DAC and amp configuration. 
 #include "driver/i2s.h"
 
-//globals
-
 
 // the callback(processes bluetooth data).
 // this is the most important function. 
