@@ -1,24 +1,30 @@
 # Bluetooth Audio for Arduino
-The code exposes the A2DP profile(Bluetooth Audio) available in ESP32 boards using the arduino interface. It assumes you have installed the [ESP32 core](https://github.com/espressif/arduino-esp32) for arduino and have an ESP32 board. I quite like the [TinyPico](https://www.tinypico.com/) because it's so powerful and so tiny! I also like the [ESP32-PICO-KIT](https://www.mouser.co.uk/ProductDetail/Espressif-Systems/ESP32-PICO-KIT?qs=MLItCLRbWsyoLrlknFRqcQ%3D%3D&vip=1&gclid=EAIaIQobChMImN2EgKTG6QIVWbvVCh0zcAPBEAQYASABEgK0kfD_BwE) because it's so powerful and cheap. Both have the same chips (i think) but one is way smaller (TinyPico). 
+The code exposes the A2DP profile(Bluetooth Audio) available in ESP32 boards using the arduino interface. It assumes you have installed the [ESP32 core](https://github.com/espressif/arduino-esp32) for arduino and have an ESP32 board. I quite like the [TinyPico](https://www.tinypico.com/) because it's so powerful and so tiny! I also like the [ESP32-PICO-KIT](https://www.mouser.co.uk/ProductDetail/Espressif-Systems/ESP32-PICO-KIT?qs=MLItCLRbWsyoLrlknFRqcQ%3D%3D&vip=1&gclid=EAIaIQobChMImN2EgKTG6QIVWbvVCh0zcAPBEAQYASABEgK0kfD_BwE) because it's so powerful and cheap. Both have the same chips (i think) but the TinyPico is way smaller. 
 
 
 ## Table of contents
 1. [Installation](#a)
 2. [Advertising the Connection](#b)
 3. [Simple Audio](#c)
-	1. [I2S](#c1)
-	2. [Hardware Connections](#c2)
+	1. [Hardware Connections](#c1)
+	2. [I2S](#c2)
 4. [Changing Volume](#d)
 5. [Serial Control](#e)
 6. [High-Pass Filtering](#f)
 7. [Low-Pass Filtering](#g)
 8. [Dynamic Range Compression](#h)
+	1. [Partial Control](#h1)
+	2. [Full Control](#h2)
 9. [Not so simple audio](#i)
 
 
 <a name="a"></a>
 ## Installation
-Download respoitory. Within the arduino IDE under Sketch>>Include Library>> select "Add .ZIP library". Then select the downloaded zip file. This should add the library. To use the library you'll have to include the relevant header in the arduino sketch. You'll see this in the following sketches
+Download respoitory. Within the arduino IDE under Sketch>>Include Library>> select "Add .ZIP library". Then select the downloaded zip file. 
+<p align="center">
+  <img src="readme/includeLibrary.PNG" width="450" title="hover text">
+</p>
+This should add the library. To use the library you'll have to include the relevant header in the arduino sketch. You'll see this in the following sketches
 
 <a name="b"></a>
 ## Advertising the Connection
@@ -30,7 +36,7 @@ The first step to getting some bluetooth audio up and running is to advertise yo
 // Sets the name of the audio device
 btAudio audio = btAudio("ESP_Speaker");
 ```
-The string that you supply to the `btAudio` object becomes the name of the ESP32 bluetooth connection. But this only initialises the object. It doesn't actually start the bluetooth. for that you'll need to use the `btAudio::begin` method.
+The string that you supply to the `btAudio` object becomes the name of the ESP32 bluetooth connection. However, this only initialises the object. It doesn't actually start the bluetooth. For that you'll need to use the `btAudio::begin` method.
  
  
 ```cpp
@@ -68,11 +74,28 @@ void loop() {
 <a name="c"></a>
 ## Simple Audio
 This section covers the [minimalAudio](examples/minimalAudio/minimalAudio.ino) example.
-Now that we have mastered the bluetooth component of "Bluetooth Audio" let's turn to the audio part. This requires some extra hardware. I like the adafruit [I2S Stereo decoder](https://www.adafruit.com/product/3678). It takes data from the ESP32 and converts it to a line out signal  which can be plugged into a stereo or Hi-Fi system (instantly adding wireless audio to your audio system). But what is I2S????
+Now that we have mastered the bluetooth component of "Bluetooth Audio" let's turn to the audio part. This requires some extra hardware. I like the adafruit [I2S Stereo decoder](https://www.adafruit.com/product/3678). It takes data from the ESP32 and converts it to a line out signal  which can be plugged into a stereo or Hi-Fi system (instantly adding wireless audio to your audio system). But what is I2S and what extra hardware do you need?
 
 <a name="c1"></a>
+### Hardware
+You will need: 
+* a Breadboard
+* An ESP32 board. I like the [TinyPico](https://www.tinypico.com/) and the [ESP32-PICO-KIT](https://www.mouser.co.uk/ProductDetail/Espressif-Systems/ESP32-PICO-KIT?qs=MLItCLRbWsyoLrlknFRqcQ%3D%3D&vip=1&gclid=EAIaIQobChMImN2EgKTG6QIVWbvVCh0zcAPBEAQYASABEgK0kfD_BwE)
+* Adafruit [I2S Stereo decoder](https://www.adafruit.com/product/3678).
+* Micro USB cable
+* 5 Jumper Wires
+* Aux cable
+* Speaker with Line in connection.
+
+1. Set up the breadboard. There's a wiring guide for the I2S DAC over at [adafruit](https://learn.adafruit.com/adafruit-i2s-stereo-decoder-uda1334a/circuitpython-wiring-test). The connections to the DAC are the same. Just swap the outputs from the microcontroller in the  adafruit example to the pins you selected for the ESP32 in the [minimalAudio](examples/minimalAudio/minimalAudio.ino) example.
+2. Upload the [minimalAudio](examples/minimalAudio/minimalAudio.ino) example.
+3. Connect the Line out from the DAC to the the Line in on the stereo/Hi-Fi using your Aux cable.
+4. On your laptop/phone connect to the ESP32 like you would any other bluetooth device.
+5. Play some audio!
+
+<a name="c2"></a>
 ### I2S
-[I2S](https://www.arduino.cc/en/Reference/I2S) is method of digitally transfering audio data between devices. It uses just 3 wires. This is particularly useful in transferring data to an external high performance Digital to Analog Converter (DAC). For instance most ESP32s have 2 8-bit DACs whereas music is usually played over 16-bit DACs(or better). However, you can get cheap 16 bit DACs that you can plug into your speakers/Hi-Fi systems. These DACs receive data from your microcontroller using I2S. The one I have been using is the Adafruit [I2S Stereo decoder](https://www.adafruit.com/product/3678). It's important to note what not all microcontrollers have I2S communication and Bluetooth Classic/ WIFI. This is why the ESP32 boards are key here. They have both. A simple bit of code to combine both the bluetooth and the I2S is given below. the only difference between this code and the advertising code is calling the `btAudio::I2S` method and specifying the 3 pins that you want to use. A cool feature about ESP32s is that you usually pick whatever pins to do whatever action you want. So feel free to change the pins.
+[I2S](https://www.arduino.cc/en/Reference/I2S) is method of digitally transfering audio data between devices. It uses just 3 wires. This is particularly useful in transferring data to an external high performance Digital to Analog Converter (DAC). For instance most ESP32s have 2 8-bit DACs whereas music is usually played over 16-bit DACs (or better). However, you can get cheap 16 bit DACs that you can plug into your speakers/Hi-Fi systems. These DACs receive data from your microcontroller using I2S. The one I have been using is the Adafruit [I2S Stereo decoder](https://www.adafruit.com/product/3678). Not all microcontrollers have I2S communication and Bluetooth Classic/ WIFI. This is why the ESP32 boards are key here. They have both. A simple bit of code to combine both the bluetooth and the I2S is given below. the only difference between this code and the advertising code is calling the `btAudio::I2S` method and specifying the 3 pins that you want to use. A cool feature about ESP32s is that you usually pick whatever pins to do whatever action you want. So feel free to change the pins.
 
 ```cpp
 #include <btAudio.h>
@@ -96,27 +119,11 @@ void loop() {
 
 }
 ```
-<a name="c2"></a>
-### Hardware
-You will need: 
-* a Breadboard
-* An ESP32 board. I like the [TinyPico](https://www.tinypico.com/) and the [ESP32-PICO-KIT](https://www.mouser.co.uk/ProductDetail/Espressif-Systems/ESP32-PICO-KIT?qs=MLItCLRbWsyoLrlknFRqcQ%3D%3D&vip=1&gclid=EAIaIQobChMImN2EgKTG6QIVWbvVCh0zcAPBEAQYASABEgK0kfD_BwE)
-* Adafruit [I2S Stereo decoder](https://www.adafruit.com/product/3678).
-* Micro USB cable
-* 5 Jumper Wires
-* Aux cable
-* Speaker with Line in connection.
-
-1. Set up the breadboard. There's a wiring guide for the I2S DAC over at [adafruit](https://learn.adafruit.com/adafruit-i2s-stereo-decoder-uda1334a/circuitpython-wiring-test). The connections to the DAC are the same. Just swap the outputs from the microcontroller in the  adafruit example to the pins you selected for the ESP32 in the [minimalAudio](examples/minimalAudio/minimalAudio.ino) example.
-2. Upload the [minimalAudio](examples/minimalAudio/minimalAudio.ino) example.
-3. Connect the Line out from the DAC to the the Line in on the stereo/Hi-Fi using your Aux cable. Make sure  your DAC has the right capacitors. If you have the latest version of the Adafruit DAC this won't be an ussue. 
-4. On your laptop/phone connect to the ESP32 like you would any other bluetooth device.
-5. Play some audio!
 
 <a name="d"></a>
 ## Changing Volume
 This section covers the [changeVolume](examples/changeVolume/changeVolume.ino) example.
-Volume is a tricky issue. Ideally, the sender should issue a  requests for volume to be changed at the receiver(using something like [AVRCP](https://en.wikipedia.org/wiki/List_of_Bluetooth_profiles#Audio/Video_Remote_Control_Profile_(AVRCP))). The sender should not change the data before it is transmitted. My MP3 player does not change the data before transmission. My laptop and phone do. One option is to digitally alter the data before it goes to the DAC but after it has been received by the ESP32. We can do this by using the `btAudio::volume` method. It accepts one argument: a floating point number between 0 and 1 and then scales the data by that number. A super cool feature of many ESP32s is that they have two cores. One can do all the setup/handling the audio on one core (core 0) while the other can handle the user interface (core 1). Any code put in `void loop()` will run on core 1.
+Volume is a tricky issue. Ideally, the sender should issue a  request for volume to be changed at the receiver (using something like [AVRCP](https://en.wikipedia.org/wiki/List_of_Bluetooth_profiles#Audio/Video_Remote_Control_Profile_(AVRCP))). The sender should not change the data before it is transmitted. My MP3 player does not change the data before transmission. My laptop and phone do. One option is to digitally alter the data before it goes to the DAC but after it has been received by the ESP32. We can do this by using the `btAudio::volume` method. It accepts one argument: a floating point number between 0 and 1. It then scales the data by that number. A super cool feature of many ESP32s is that they have two cores. One can do all the setup/ audio on one core (core 0) while the other can handle the user interface (core 1). Any code put in `void loop()` will run on core 1. We'll take advantage of that in later sections.
 
 ```cpp
 #include <btAudio.h>
@@ -269,6 +276,69 @@ void loop() {
 ```
 <a name="h"></a>
 ## Dynamic Range Compression
+I'll highlight terms throughout this section that will be paramters for the [Dynamic range compression(DRC)](https://en.wikipedia.org/wiki/Dynamic_range_compression). DRC is a method that evens out the sound of audio.  It compresses loud sounds to the level of quiet ones and then, optionally, amplifies(`gain`) both. The result is a more even audio experience. It is nonlinear and has many, many settings. It is both compicated to implement and to use. Consider this feature experimental. There are two main types of compression: Hard Knee and Soft Knee. Basically, once the audio reaches a certain `threshold` it starts to be compressed by a certain `Ratio`. Hard knee compressors start compressing immediately at the `threshold` but Soft knee compressors start compressing sooner and in a more smooth fashion. Supposedly, this leads to a more natural sound but it is far more computationaly intensive to implement.   
+<a title="Iainf / Public domain" href="https://commons.wikimedia.org/wiki/File:Compression_knee.svg"><img width="600" alt="Compression knee" src="https://upload.wikimedia.org/wikipedia/commons/3/3e/Compression_knee.svg"></a>
+
+You can also specify the `width` of this soft knee (i.e. How gradual you want the compression to be). Setting this `width` to zero implements a hard knee. You can alsoe set `attack` and `release` times. These are time constants that determin how quickly the compressor starts working. For instance if there was a sudden change in volume you might want to have a very quick `attack` time so as to compress that signal quickly. Having a long `release` time will leave the compressor running for a brief time after it has started compressing. I've got two examples on how to use the compressor. One has extreme parameters that you can just turn on or off and another with full serial control over all the parameters. 
+
+
+<a name="h1"></a>
+### Partial Control
+This section covers the [partialDRC](examples/partialDRC/partialDRC.ino) example. 
+For turning the compressor on and off just send the `compress#` and `decompress#` commands over the serial port. This will call the `btAudio::compress` method and the `btAudio::decompress` method. Hopefully, you should hear a clear difference between compressed and uncompressed data. It can be quite useful for making sure audio will never clip a set of speakers and for watching tv shows that have very loud background music and very low vocals. I'm looking at you xxxxxxx! 
+```cpp
+#include <btAudio.h>
+
+btAudio audio = btAudio("ESP_Speaker");
+String command;
+
+void setup() { 
+ audio.begin();
+ int bck = 26; 
+ int ws = 27;
+ int dout = 25;
+ audio.I2S(bck, dout, ws);
+ Serial.begin(115200);
+ 
+}
+
+float thresh=30;
+float attack=0.1;
+float release= 0.2;
+float ratio = 10;
+float width= 10;
+float gain=0;
+
+void loop() {
+ delay(300);
+ if(Serial.available()){
+  command = Serial.readStringUntil('#');
+   if(command.equals("compress")){
+    Serial.println("Applying Compression");
+    audio.compress(thresh,attack,release,ratio,width,gain);
+   }
+   else if(command.equals("decompress")){
+    Serial.println("Releasing Compression");
+    audio.decompress();
+   }
+  }
+}
+```
+
+<a name="h2"></a>
+### Full Control
+This section covers the [fullDRC](examples/fullDRC/fullDRC.ino) example. Examples of the commands to control the individual parameters are as follows:
+* compress#
+* decompress#
+* gain#0
+* thresh#25
+* attack#0.1
+* release#0.1
+* ratio#10
+* width#10
+
+The actual code that does the compression is the same but the serial interface is more verbose.
+
 ```cpp
 #include <btAudio.h>
 
@@ -286,7 +356,7 @@ void setup() {
 
 float thresh=30;
 float attack=0.1;
-float rel= 0.2;
+float release= 0.2;
 float ratio = 10;
 float kneeWidth= 1;
 float gain=0;
@@ -297,41 +367,42 @@ void loop() {
   command = Serial.readStringUntil('#');
    if(command.equals("compress")){
     Serial.println("Applying Compression");
-    audio.compress(thresh,attack,rel,ratio,kneeWidth,gain);
+    audio.compress(thresh,attack,release,ratio,kneeWidth,gain);
    }
    else if(command.equals("decompress")){
     Serial.println("Releasing Compression");
     audio.decompress();
    }
    else if(command.equals("gain")){
-    gain =(int)Serial.parseInt();
-    Serial.println(gain);
-    audio.compress(thresh,attack,rel,ratio,kneeWidth,gain);
+    gain =Serial.parseInt();
+    Serial.println((String)"Compressing with a gain of "+gain);
+    audio.compress(thresh,attack,release,ratio,kneeWidth,gain);
    }
    else if(command.equals("thresh")){
-    thresh =(float)Serial.parseFloat();
+    thresh =Serial.parseFloat();
     Serial.println(thresh);
-    audio.compress(thresh,attack,rel,ratio,kneeWidth,gain);
+    Serial.println((String)"Compressing with a threshold of " + thresh + "dB");
+    audio.compress(thresh,attack,release,ratio,kneeWidth,gain);
    }
    else if(command.equals("attack")){
-    attack =(float)Serial.parseFloat();
-    Serial.println(attack);
-   audio.compress(thresh,attack,rel,ratio,kneeWidth,gain); 
+    attack =Serial.parseFloat();
+    Serial.println((String)"Compressing with an attack time of " + attack*1000 + "ms");
+   audio.compress(thresh,attack,release,ratio,kneeWidth,gain); 
    }
-   else if(command.equals("rel")){
-    rel =(float)Serial.parseFloat();
-    Serial.println(rel);
-    audio.compress(thresh,attack,rel,ratio,kneeWidth,gain);
+   else if(command.equals("release")){
+    release =Serial.parseFloat();
+    Serial.println((String)"Compressing with an release time of " + release*1000 + "ms");
+    audio.compress(thresh,attack,release,ratio,kneeWidth,gain);
    }
    else if(command.equals("ratio")){
-    ratio =(float)Serial.parseFloat();
-    Serial.println(ratio);
-    audio.compress(thresh,attack,rel,ratio,kneeWidth,gain);
+    ratio =Serial.parseFloat();
+    Serial.println((String)"Compressing with a Ratio of " + ratio);
+    audio.compress(thresh,attack,release,ratio,kneeWidth,gain);
    }
-   else if(command.equals("w")){
-    kneeWidth =(int)Serial.parseInt();
-    Serial.println(kneeWidth);
-   audio.compress(thresh,attack,rel,ratio,kneeWidth,gain);
+   else if(command.equals("width")){
+    kneeWidth =Serial.parseInt();
+    Serial.println((String)"Compressing with a knee width of " + kneeWidth + "dB");
+    audio.compress(thresh,attack,release,ratio,kneeWidth,gain);
    }
   }
 }
@@ -339,7 +410,7 @@ void loop() {
 ```
 <a name="i"></a>
 ## Not so simple audio
-What if [you hate classes](https://medium.com/better-programming/object-oriented-programming-the-trillion-dollar-disaster-92a4b666c7c7 ) and don't want to use my code but still want Bluetooth audio. Well this section covers just how to do that with the [underTheHood](examples/underTheHood/underTheHood.ino) example. It uses the minimum amount of ESP32 code to get audio output on I2S. I ain't gonna explain this. The reason I wrote the library is so that I wouln't have to eplain low level ESP32 code. However, for developers it may be easier to work with the raw ESP32 code as you can see the key parts super easily. For an end user I think a class based approach that hides these details is the way to go. Whatever your thoughts, I think the debate between class based object-oriented programming and more functional programming is an interesting one. 
+What if [you hate classes](https://medium.com/better-programming/object-oriented-programming-the-trillion-dollar-disaster-92a4b666c7c7 ) and don't want to use my code but still want Bluetooth audio. Well this section covers just how to do that with the [underTheHood](examples/underTheHood/underTheHood.ino) example. It uses the minimum amount of ESP32 code to get audio output on I2S. I ain't gonna explain this. The reason I wrote the library is so that I wouldn't have to explain low level ESP32 code. However, for developers it may be easier to work with the raw ESP32 code as you can see the all the moving parts and dependencies more easily. However, for an end user(not a developer) I think a class based approach that hides these details is the way to go. Whatever your thoughts, I think I'm unlikely to shift from the object-oriented programming to more functional programming for this library. 
 
 On a technical note this code adapts the [ESP-IDF A2DP Sink](https://github.com/espressif/esp-idf/blob/master/examples/bluetooth/bluedroid/classic_bt/a2dp_sink/main/main.c
 ) example but uses the [arduino-esp32 library](https://github.com/espressif/arduino-esp32) . There are very subtle differences between these libraries. So this example will only work with the arduino library, not the ESP-IDF library. You'll need to use the much more complicated [ESP-IDF example](https://github.com/espressif/esp-idf/blob/master/examples/bluetooth/bluedroid/classic_bt/a2dp_sink/main/main.c
