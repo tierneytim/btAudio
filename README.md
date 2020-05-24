@@ -95,7 +95,7 @@ You will need:
 <a name="c2"></a>
 ### Hardware: Setup
 1. Set up the breadboard. There's a wiring guide for the I2S DAC over at [adafruit](https://learn.adafruit.com/adafruit-i2s-stereo-decoder-uda1334a/circuitpython-wiring-test). The connections to the DAC are the same. Just swap the outputs from the microcontroller in the  adafruit example to the pins you selected for the ESP32 in the [minimalAudio](examples/minimalAudio/minimalAudio.ino) example.
-Mine looks like this. While making this project I didn't have access to jumper wires or a soldering iron(they were at my locked-down workplace). For the jumper wires I just cut up one long blue wire into as many wires as I need. To attach pins to the DAC I used [Pimoroni push headers](https://shop.pimoroni.com/products/gpio-hammer-header?variant=35643241098). This is not ideal but cheaper than buying a soldering iron for a small project. 
+Mine looks like this. While making this project I didn't have access to jumper wires or a soldering iron (they were at my locked-down workplace). For the jumper wires I just cut up one long blue wire into as many wires as I needed. To attach pins to the DAC I used [Pimoroni push headers](https://shop.pimoroni.com/products/gpio-hammer-header?variant=35643241098). This is not ideal but cheaper than buying a termporary soldering iron. 
    
 <p align="center">
   <img src="readme/bread_rotate.jpg" width="600" />
@@ -127,12 +127,14 @@ void loop() {
 ```
 
 3. Disconenct USB from computer and power the ESP32 board from a USB power supply near the speaker. Don't worry about it losing power it will remember the code you uploaded previously.
-4. Connect the Line out from the DAC to the the Line in on the stereo/Hi-Fi using your Aux cable. You could also used wired headphones here instead of an Aux cable to a speaker.
+4. Connect the Line out from the DAC to the the Line in on the stereo/Hi-Fi using your Aux cable. You could also used wired headphones instead of an Aux cable to a speaker.
 My setup looks like this.
 <p align="center">
   <img src="readme/speaker.jpg" width="600" />
 </p>
+
 5. On your laptop/phone connect to the ESP32 like you would any other bluetooth device.
+
 6. Play some audio!
 
 <a name="c3"></a>
