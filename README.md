@@ -22,7 +22,7 @@ The code exposes the A2DP profile(Bluetooth Audio) available in ESP32 boards usi
 ## Installation
 Download respoitory. Within the arduino IDE under Sketch>>Include Library>> select "Add .ZIP library". Then select the downloaded zip file. 
 <p align="center">
-  <img src="readme/includeLibrary.PNG" width="450" title="hover text">
+  <img src="readme/includeLibrary.PNG" width="450" />
 </p>
 This should add the library. To use the library you'll have to include the relevant header in the arduino sketch. You'll see this in the following sketches
 
