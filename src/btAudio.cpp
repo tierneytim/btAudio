@@ -16,7 +16,7 @@ btAudio::btAudio(const char *devName) {
 }
 
 void btAudio::begin() {
-  
+	
   //Arduino bluetooth initialisation
   btStart();
 
@@ -31,8 +31,7 @@ void btAudio::begin() {
   esp_a2d_sink_init();
 
   // set discoverable and connectable mode, wait to be connected
-  esp_bt_gap_set_scan_mode(ESP_BT_SCAN_MODE_CONNECTABLE_DISCOVERABLE);  
-  
+  esp_bt_gap_set_scan_mode(ESP_BT_SCAN_MODE_CONNECTABLE_DISCOVERABLE);  	
 }
 
 void btAudio::end() {
@@ -51,8 +50,8 @@ void btAudio::I2S(int bck, int dout, int ws) {
     .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT,
     .communication_format = static_cast<i2s_comm_format_t>(I2S_COMM_FORMAT_I2S|I2S_COMM_FORMAT_I2S_MSB),
     .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1, // default interrupt priority
-    .dma_buf_count = 8,
-    .dma_buf_len = 1000,
+    .dma_buf_count = 6,
+    .dma_buf_len = 100,
     .use_apll = true,
     .tx_desc_auto_clear = true
   };
@@ -70,8 +69,7 @@ void btAudio::I2S(int bck, int dout, int ws) {
   i2s_set_pin(I2S_NUM_0, &pin_config);
   
   // Sets the function that will handle data (i2sCallback)
-  esp_a2d_sink_register_data_callback(i2sCallback);
- 
+   esp_a2d_sink_register_data_callback(i2sCallback);
 }
 
 void btAudio::createFilter(int n, float fc, int type){
@@ -153,12 +151,12 @@ void btAudio::i2sCallback(const uint8_t *data, uint32_t len){
 		for(int i=0;i<n;i++){
 		 //process left channel
 		 fy[0] = (*data16);
-		 fy[0] = _filtLlp.process(fy[0]*_vol);
+		 fy[0] = (int16_t)_filtLlp.process(fy[0]*_vol);
 		 fy[0] = _filtLhp.process(fy[0]);
 		 data16++;
 		 // process right channel
 		 fy[1] = (*data16);
-		 fy[1] = _filtRlp.process(fy[1]*_vol);
+		 fy[1] = (int16_t)_filtRlp.process(fy[1]*_vol);
 		 fy[1] = _filtRhp.process(fy[1]);
 		 data16++; 
 		 i2s_write(I2S_NUM_0, fy, jump, &i2s_bytes_write,  10 );
@@ -201,15 +199,16 @@ void btAudio::i2sCallback(const uint8_t *data, uint32_t len){
   }
 }
 
+
 void btAudio::stopRecord(){
 	//_postprocess=0;
 	//_file.close();
-	enableCore0WDT(); 
+	//enableCore0WDT(); 
 }
 
 void btAudio::record(const char * path){
-    disableCore0WDT();
-   /*  if(!SD.begin()){
+   /*disableCore0WDT();
+     if(!SD.begin()){
         Serial.println("Card Mount Failed");
         return;
     }
