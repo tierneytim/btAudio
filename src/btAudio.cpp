@@ -1,6 +1,6 @@
 #include "btAudio.h"
 
- float btAudio::_vol=1.0;
+ float btAudio::_vol=0.95;
  int btAudio::_postprocess=0;
  filter btAudio::_filtLhp = filter(20,44100,3,highpass); 
  filter btAudio::_filtRhp = filter(20,44100,3,highpass);
@@ -50,8 +50,8 @@ void btAudio::I2S(int bck, int dout, int ws) {
     .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT,
     .communication_format = static_cast<i2s_comm_format_t>(I2S_COMM_FORMAT_I2S|I2S_COMM_FORMAT_I2S_MSB),
     .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1, // default interrupt priority
-    .dma_buf_count = 6,
-    .dma_buf_len = 100,
+    .dma_buf_count = 3,
+    .dma_buf_len = 300,
     .use_apll = true,
     .tx_desc_auto_clear = true
   };
@@ -131,20 +131,21 @@ void btAudio::volume(float vol){
 void btAudio::i2sCallback(const uint8_t *data, uint32_t len){
   size_t i2s_bytes_write = 0; 
   int16_t* data16=(int16_t*)data; //playData doesnt want const
+  int16_t fy[2];
+	
   int jump =4; //how many bytes at a time get sent to buffer
-  int  n = len/jump; // number of byte chunks
-  int16_t fy[2];    // array to send via i2s(Left and Right channel)
-
-  switch (_postprocess) {
+  int  n = len/jump; // number of byte chunks	
+	switch (_postprocess) {
    case NOTHING:
         for(int i=0;i<n;i++){
     	 //process left channel
 		 fy[0] = (int16_t)((*data16)*_vol);
 		 data16++;
+		 
 		 // process right channel
 		 fy[1] = (int16_t)((*data16)*_vol);
 		 data16++;
-		 i2s_write(I2S_NUM_0, fy, jump, &i2s_bytes_write,  10 ); 
+		 i2s_write(I2S_NUM_0, fy, jump, &i2s_bytes_write,  100 ); 
 		}
 		break;
    case FILTER:
@@ -154,49 +155,48 @@ void btAudio::i2sCallback(const uint8_t *data, uint32_t len){
 		 fy[0] = (int16_t)_filtLlp.process(fy[0]*_vol);
 		 fy[0] = _filtLhp.process(fy[0]);
 		 data16++;
+		 
 		 // process right channel
 		 fy[1] = (*data16);
 		 fy[1] = (int16_t)_filtRlp.process(fy[1]*_vol);
 		 fy[1] = _filtRhp.process(fy[1]);
 		 data16++; 
-		 i2s_write(I2S_NUM_0, fy, jump, &i2s_bytes_write,  10 );
+		 i2s_write(I2S_NUM_0, fy, jump, &i2s_bytes_write,  100 );
 		} 
 		break;
    case COMPRESS:
 	    for(int i=0;i<n;i++){
 		 //process left channel
-		 fy[0] = (*data16);
-		 
+		 fy[0] = (*data16); 
 		 fy[0]=_DRCL.softKnee(fy[0]*_vol);
 		 data16++;
+		 
 		 // process right channel
 		 fy[1] = (*data16);
 		 fy[1]=_DRCR.softKnee(fy[1]*_vol);
 		 data16++;
-		 i2s_write(I2S_NUM_0, fy, jump, &i2s_bytes_write,  10 );
+		 i2s_write(I2S_NUM_0, fy, jump, &i2s_bytes_write,  100 );
 		}
 		break;
    case FILTER_COMPRESS:
-		for(int i=0;i<n;i++){
+      for(int i=0;i<n;i++){
 		 //process left channel
-		 fy[0] = (*data16);
-		 fy[0] = _filtLlp.process(fy[0]);
-		 fy[0] = _filtLhp.process(fy[0]);
+		 fy[0] = _filtLhp.process(_filtLlp.process(*data16));
 		 fy[0] = _DRCL.softKnee(fy[0]*_vol);
 		 data16++;
+		 
 		 // process right channel
-		 fy[1] = (*data16);
-		 fy[1] = _filtRlp.process(fy[1]);
-		 fy[1] = _filtRhp.process(fy[1]);
+		 fy[1] = _filtRhp.process(_filtRlp.process(*data16));
 		 fy[1] = _DRCR.softKnee(fy[1]*_vol);
 		 data16++;
-		 i2s_write(I2S_NUM_0, fy, jump, &i2s_bytes_write,  10 );
+		 i2s_write(I2S_NUM_0, fy, jump, &i2s_bytes_write,  100 );
 		}
 		break;
    case RECORD:
 		// _file.write(data, len);
 		break;		
   }
+
 }
 
 
