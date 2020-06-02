@@ -29,10 +29,10 @@ float DRC::log10f_approx(float X){
 		Y *=0.3010299956639812f;
   return(Y);
 }
-  
+
 int16_t DRC::softKnee(float x){
 		// signal to dB
-		float dBx = fabs(x);
+	 	float dBx = fabsf(x);
 		dBx+=1;
 		dBx= 20.0*log10f_approx(dBx);
 		
@@ -53,10 +53,17 @@ int16_t DRC::softKnee(float x){
 		// smooth difference between compressed and uncompressed data
 		dBy-=dBx;
 		if(dBy>_yprev){
-			dBy = _alphAtt*(_yprev-dBy) +dBy;
-		}else{
-			dBy = _alphRel*(_yprev-dBy) +dBy;
+			//dBy = _alphAtt*dBy+ _yprev-_alphAtt*_yprev;
+			//dBy = _alphAtt*(dBy-_yprev)+_yprev;
+			dBy = _alphAtt*_yprev+ (1-_alphAtt)*dBy;
+			//dBy = _alphAtt*dBy+ (1-_alphAtt)*_yprev;
 			
+		}else{
+			//dBy = _alphRel*(dBy-_yprev)+_yprev;
+			//dBy = _alphRel*dBy+ _yprev-_alphRel*_yprev;
+			dBy = _alphRel*_yprev+ (1-_alphRel)*dBy;
+			//dBy = _alphRel*dBy+ (1-_alphRel)*_yprev;
+	
 		}
 		// save current value for next iteration
 		_yprev=dBy;
@@ -64,16 +71,28 @@ int16_t DRC::softKnee(float x){
 		// add in make up gain
 		dBy+=_mu;
 		
-		// convert from dB to signal
-		dBy/=20.0;
-		dBy = x*(pow10f(dBy));
-		
+
+		if(dBy<0){
+			int integ=  (int)dBy;
+			integ-=1;
+			float frac= dBy-integ;
+			dBy = 1.0f+ (0.1146f+0.0074f*frac)*frac;
+			dBy*=G[integ+96];
+			dBy*=x;
+		}else{
+			int integ=  (int)dBy;
+			float frac= dBy-integ;
+			dBy= 1.0f+ (0.1146f+0.0074f*frac)*frac;
+			dBy*=G[integ+96];
+			dBy*=x;
+		}
+
 		// constrain to be in int16_t range
 		if(dBy>32767){
 			dBy=32767;
 		}else if (dBy < -32767){
 			dBy= -32767;
 		}
-		// and return 16-bit signal
+		// and return 16-bit signal */
 		return (int16_t)(dBy);
 }
