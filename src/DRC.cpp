@@ -53,17 +53,10 @@ int16_t DRC::softKnee(float x){
 		// smooth difference between compressed and uncompressed data
 		dBy-=dBx;
 		if(dBy<_yprev){
-			//dBy = _alphAtt*dBy+ _yprev-_alphAtt*_yprev;
-			//dBy = _alphAtt*(dBy-_yprev)+_yprev;
 			dBy = _alphAtt*_yprev+ (1-_alphAtt)*dBy;
-			//dBy = _alphAtt*dBy+ (1-_alphAtt)*_yprev;
 			
 		}else{
-			//dBy = _alphRel*(dBy-_yprev)+_yprev;
-			//dBy = _alphRel*dBy+ _yprev-_alphRel*_yprev;
 			dBy = _alphRel*_yprev+ (1-_alphRel)*dBy;
-			//dBy = _alphRel*dBy+ (1-_alphRel)*_yprev;
-	
 		}
 		// save current value for next iteration
 		_yprev=dBy;
