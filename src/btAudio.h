@@ -35,6 +35,7 @@ class btAudio {
     void record(const char * path);
 	void stopRecord();
 	int  postProc();
+	static uint8_t _address[6];
   private:
     const char *_devName;
 	bool _filtering=false;
@@ -42,6 +43,7 @@ class btAudio {
 	
 	// static function that causes a static infection of variables it needs
 	static void i2sCallback(const uint8_t *data, uint32_t len);
+	static void getAddress(esp_a2d_cb_event_t event, esp_a2d_cb_param_t *param);
 	static DRC _DRCR;
 	static DRC _DRCL;
 	static float _vol;

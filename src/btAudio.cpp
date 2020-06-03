@@ -1,6 +1,7 @@
 #include "btAudio.h"
 
  float btAudio::_vol=0.95;
+ uint8_t btAudio::_address[6];
  int btAudio::_postprocess=0;
  filter btAudio::_filtLhp = filter(20,44100,3,highpass); 
  filter btAudio::_filtRhp = filter(20,44100,3,highpass);
@@ -29,9 +30,31 @@ void btAudio::begin() {
   
   // this sets up the audio receive
   esp_a2d_sink_init();
-
+  
+  esp_a2d_register_callback(getAddress);
+  
   // set discoverable and connectable mode, wait to be connected
   esp_bt_gap_set_scan_mode(ESP_BT_SCAN_MODE_CONNECTABLE_DISCOVERABLE);  	
+}
+void btAudio::getAddress(esp_a2d_cb_event_t event, esp_a2d_cb_param_t *param){
+	
+	 switch (event) {
+    case ESP_A2D_CONNECTION_STATE_EVT:{
+        esp_a2d_cb_param_t *a2d = (esp_a2d_cb_param_t *)(param);
+       
+        uint8_t* temp= a2d->conn_stat.remote_bda;
+        _address[0]= *temp;
+		_address[1]= *(temp+1);
+		_address[2]= *(temp+2);
+		_address[3]= *(temp+3);
+		_address[4]= *(temp+4);
+		_address[5]= *(temp+5);    
+        break;
+    }
+    default:
+       // log_e("a2dp invalid cb event: %d", event);
+        break;
+    }
 }
 
 void btAudio::end() {
@@ -52,7 +75,7 @@ void btAudio::I2S(int bck, int dout, int ws) {
     .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1, // default interrupt priority
     .dma_buf_count = 3,
     .dma_buf_len = 300,
-    .use_apll = true,
+    .use_apll = false,
     .tx_desc_auto_clear = true
   };
   
@@ -138,7 +161,7 @@ void btAudio::i2sCallback(const uint8_t *data, uint32_t len){
 	switch (_postprocess) {
    case NOTHING:
         for(int i=0;i<n;i++){
-    	 //process left channel
+		 //process left channel
 		 fy[0] = (int16_t)((*data16)*_vol);
 		 data16++;
 		 
