@@ -1,21 +1,28 @@
 #include "btAudio.h"
 
+////////////////////////////////////////////////////////////////////
+////////////// Nasty statics for i2sCallback ///////////////////////
+////////////////////////////////////////////////////////////////////
  float btAudio::_vol=0.95;
  uint8_t btAudio::_address[6];
  int btAudio::_postprocess=0;
- filter btAudio::_filtLhp = filter(20,44100,3,highpass); 
- filter btAudio::_filtRhp = filter(20,44100,3,highpass);
+ filter btAudio::_filtLhp = filter(2,44100,3,highpass); 
+ filter btAudio::_filtRhp = filter(2,44100,3,highpass);
  filter btAudio::_filtLlp = filter(20000,44100,3,lowpass); 
  filter btAudio::_filtRlp = filter(20000,44100,3,lowpass);  
- 
- DRC btAudio::_DRCL = DRC(44100,30,0.01,0.2,10,10,0); 
- DRC btAudio::_DRCR = DRC(44100,30,0.01,0.2,10,10,0); 
- //File btAudio::_file = SD.open("init.txt",FILE_WRITE);
+ DRC btAudio::_DRCL = DRC(44100,60.0,0.001,0.2,4.0,10.0,0.0); 
+ DRC btAudio::_DRCR = DRC(44100,60.0,0.001,0.2,4.0,10.0,0.0); 
 
+////////////////////////////////////////////////////////////////////
+////////////////////////// Constructor /////////////////////////////
+////////////////////////////////////////////////////////////////////
 btAudio::btAudio(const char *devName) {
   _devName=devName;  
 }
 
+////////////////////////////////////////////////////////////////////
+////////////////// Bluetooth Functionality /////////////////////////
+////////////////////////////////////////////////////////////////////
 void btAudio::begin() {
 	
   //Arduino bluetooth initialisation
@@ -36,7 +43,13 @@ void btAudio::begin() {
   // set discoverable and connectable mode, wait to be connected
   esp_bt_gap_set_scan_mode(ESP_BT_SCAN_MODE_CONNECTABLE_DISCOVERABLE);  	
 }
-void btAudio::getAddress(esp_a2d_cb_event_t event, esp_a2d_cb_param_t *param){
+void btAudio::end() {
+  esp_a2d_sink_deinit();
+  esp_bluedroid_disable();
+  esp_bluedroid_deinit();
+  btStop();  
+}
+void btAudio::getAddress(esp_a2d_cb_event_t event, esp_a2d_cb_param_t*param){
 	
 	 switch (event) {
     case ESP_A2D_CONNECTION_STATE_EVT:{
@@ -57,13 +70,9 @@ void btAudio::getAddress(esp_a2d_cb_event_t event, esp_a2d_cb_param_t *param){
     }
 }
 
-void btAudio::end() {
-  esp_a2d_sink_deinit();
-  esp_bluedroid_disable();
-  esp_bluedroid_deinit();
-  btStop();  
-}
-
+////////////////////////////////////////////////////////////////////
+////////////////// I2S Audio Functionality /////////////////////////
+////////////////////////////////////////////////////////////////////
 void btAudio::I2S(int bck, int dout, int ws) {
    // i2s configuration
   static const i2s_config_t i2s_config = {
@@ -94,7 +103,80 @@ void btAudio::I2S(int bck, int dout, int ws) {
   // Sets the function that will handle data (i2sCallback)
    esp_a2d_sink_register_data_callback(i2sCallback);
 }
+void btAudio::i2sCallback(const uint8_t *data, uint32_t len){
+  size_t i2s_bytes_write = 0; 
+  int16_t* data16=(int16_t*)data; //playData doesnt want const
+  int16_t fy[2];
+	
+  int jump =4; //how many bytes at a time get sent to buffer
+  int  n = len/jump; // number of byte chunks	
+	switch (_postprocess) {
+   case NOTHING:
+        for(int i=0;i<n;i++){
+		 //process left channel
+		 fy[0] = (int16_t)((*data16)*_vol);
+		 data16++;
+		 
+		 // process right channel
+		 fy[1] = (int16_t)((*data16)*_vol);
+		 data16++;
+		 i2s_write(I2S_NUM_0, fy, jump, &i2s_bytes_write,  portMAX_DELAY ); 
+		}
+		break;
+   case FILTER:
+		for(int i=0;i<n;i++){
+		 //process left channel
+		 fy[0] = (*data16);
+		 fy[0] = (int16_t)_filtLlp.process(fy[0]*_vol);
+		 fy[0] = _filtLhp.process(fy[0]);
+		 data16++;
+		 
+		 // process right channel
+		 fy[1] = (*data16);
+		 fy[1] = (int16_t)_filtRlp.process(fy[1]*_vol);
+		 fy[1] = _filtRhp.process(fy[1]);
+		 data16++; 
+		 i2s_write(I2S_NUM_0, fy, jump, &i2s_bytes_write,  portMAX_DELAY );
+		} 
+		break;
+   case COMPRESS:
+	    for(int i=0;i<n;i++){
+		 //process left channel
+		 fy[0] = (*data16); 
+		 fy[0]=_DRCL.softKnee(fy[0]*_vol);
+		 data16++;
+		 
+		 // process right channel
+		 fy[1] = (*data16);
+		 fy[1]=_DRCR.softKnee(fy[1]*_vol);
+		 data16++;
+		 i2s_write(I2S_NUM_0, fy, jump, &i2s_bytes_write,  portMAX_DELAY );
+		}
+		break;
+   case FILTER_COMPRESS:
+      for(int i=0;i<n;i++){
+		 //process left channel
+		 fy[0] = _filtLhp.process(_filtLlp.process(*data16));
+		 fy[0] = _DRCL.softKnee(fy[0]*_vol);
+		 data16++;
+		 
+		 // process right channel
+		 fy[1] = _filtRhp.process(_filtRlp.process(*data16));
+		 fy[1] = _DRCR.softKnee(fy[1]*_vol);
+		 data16++;
+		 i2s_write(I2S_NUM_0, fy, jump, &i2s_bytes_write,  portMAX_DELAY );
+		}
+		break;	
+  }
 
+}
+void btAudio::volume(float vol){
+	_vol = constrain(vol,0,1);	
+}
+
+////////////////////////////////////////////////////////////////////
+////////////////// Filtering Functionality /////////////////////////
+////////////////////////////////////////////////////////////////////
 void btAudio::createFilter(int n, float fc, int type){
    fc=constrain(fc,2,20000);
    switch (type) {
@@ -115,7 +197,6 @@ void btAudio::createFilter(int n, float fc, int type){
 	 _postprocess=1;
 	}
 }
-
 void btAudio::stopFilter(){
 	_filtering=false;
 	if(_compressing){
@@ -125,7 +206,17 @@ void btAudio::stopFilter(){
 	}
 }
 
-void btAudio::compress(float T,float alphAtt,float alphRel, float R,int w,int mu){
+////////////////////////////////////////////////////////////////////
+////////////////// Compression Functionality ///////////////////////
+////////////////////////////////////////////////////////////////////
+void btAudio::compress(float T,float alphAtt,float alphRel, float R,float w,float mu){
+	_T=T;
+	_alphAtt=alphAtt;
+	_alphRel=alphRel;
+	_R=R;
+	_w=w;
+	_mu=mu;
+	
 	_DRCL = DRC(44100,T,alphAtt,alphRel,R,w,mu);
 	_DRCR = DRC(44100,T,alphAtt,alphRel,R,w,mu);
 	_compressing=true;
@@ -136,7 +227,6 @@ void btAudio::compress(float T,float alphAtt,float alphRel, float R,int w,int mu
 	 _postprocess=2;
 	}	
 }
-
 void btAudio::decompress(){
 	_compressing=false;
 	
@@ -147,101 +237,83 @@ void btAudio::decompress(){
 	}
 }
 
-void btAudio::volume(float vol){
-	_vol = constrain(vol,0,1);	
-}
 
-void btAudio::i2sCallback(const uint8_t *data, uint32_t len){
-  size_t i2s_bytes_write = 0; 
-  int16_t* data16=(int16_t*)data; //playData doesnt want const
-  int16_t fy[2];
-	
-  int jump =4; //how many bytes at a time get sent to buffer
-  int  n = len/jump; // number of byte chunks	
-	switch (_postprocess) {
-   case NOTHING:
-        for(int i=0;i<n;i++){
-		 //process left channel
-		 fy[0] = (int16_t)((*data16)*_vol);
-		 data16++;
-		 
-		 // process right channel
-		 fy[1] = (int16_t)((*data16)*_vol);
-		 data16++;
-		 i2s_write(I2S_NUM_0, fy, jump, &i2s_bytes_write,  100 ); 
-		}
-		break;
-   case FILTER:
-		for(int i=0;i<n;i++){
-		 //process left channel
-		 fy[0] = (*data16);
-		 fy[0] = (int16_t)_filtLlp.process(fy[0]*_vol);
-		 fy[0] = _filtLhp.process(fy[0]);
-		 data16++;
-		 
-		 // process right channel
-		 fy[1] = (*data16);
-		 fy[1] = (int16_t)_filtRlp.process(fy[1]*_vol);
-		 fy[1] = _filtRhp.process(fy[1]);
-		 data16++; 
-		 i2s_write(I2S_NUM_0, fy, jump, &i2s_bytes_write,  100 );
-		} 
-		break;
-   case COMPRESS:
-	    for(int i=0;i<n;i++){
-		 //process left channel
-		 fy[0] = (*data16); 
-		 fy[0]=_DRCL.softKnee(fy[0]*_vol);
-		 data16++;
-		 
-		 // process right channel
-		 fy[1] = (*data16);
-		 fy[1]=_DRCR.softKnee(fy[1]*_vol);
-		 data16++;
-		 i2s_write(I2S_NUM_0, fy, jump, &i2s_bytes_write,  100 );
-		}
-		break;
-   case FILTER_COMPRESS:
-      for(int i=0;i<n;i++){
-		 //process left channel
-		 fy[0] = _filtLhp.process(_filtLlp.process(*data16));
-		 fy[0] = _DRCL.softKnee(fy[0]*_vol);
-		 data16++;
-		 
-		 // process right channel
-		 fy[1] = _filtRhp.process(_filtRlp.process(*data16));
-		 fy[1] = _DRCR.softKnee(fy[1]*_vol);
-		 data16++;
-		 i2s_write(I2S_NUM_0, fy, jump, &i2s_bytes_write,  100 );
-		}
-		break;
-   case RECORD:
-		// _file.write(data, len);
-		break;		
+////////////////////////////////////////////////////////////////////
+/////////////////////// WIFI Functionality /////////////////////////
+////////////////////////////////////////////////////////////////////
+void btAudio::webDSP(const char* ssid, const char* password){
+  WiFi.mode(WIFI_STA);
+  while(WiFi.status() != WL_CONNECTED) {
+    WiFi.begin(ssid, password);
+    delay(1000);
+    Serial.print(".");
   }
+  Serial.print("IP Address: ");
+  Serial.println(WiFi.localIP());
 
-}
+  // Send web page with input fields to client
 
+_server.on("/get", HTTP_GET, [this] (AsyncWebServerRequest *request) {
 
-void btAudio::stopRecord(){
-	//_postprocess=0;
-	//_file.close();
-	//enableCore0WDT(); 
-}
+  AsyncWebParameter *par = request->getParam(0);
+  String inputName = par->name();
+  String inputVal = par->value();
+  char sw = inputName.charAt(0);
+  request->send_P(200, "text/html", index_html);
+   
+  switch(sw) {
+    case 'h': 
+	  this->createFilter(3, inputVal.toFloat(), highpass);
+      break;
+    case 'l': 
+      this->createFilter(3, inputVal.toFloat(), lowpass);
+      break;
+    case 'c': 
+      this->decompress();
+      break;
+    case 'g': 
+      _mu =inputVal.toFloat();
+      this->compress(_T,_alphAtt,_alphRel,_R,_w,_mu);
+      break;
+    case 't': 
+      _T =inputVal.toFloat();
+      this->compress(_T,_alphAtt,_alphRel,_R,_w,_mu);
+      break;
+    case 'a': 
+      _alphAtt =inputVal.toFloat();
+      this->compress(_T,_alphAtt,_alphRel,_R,_w,_mu);
+      break;
+    case 'r': 
+      _alphRel =inputVal.toFloat();
+      this->compress(_T,_alphAtt,_alphRel,_R,_w,_mu);
+      break;
+    case 'w': 
+      _w =inputVal.toFloat();
+      this->compress(_T,_alphAtt,_alphRel,_R,_w,_mu);
+      break;
+    case 'f': 
+      this->stopFilter(); 
+      break;
+    case 'R':
+      _R = inputVal.toFloat(); 
+      this->compress(_T,_alphAtt,_alphRel,_R,_w,_mu);
+      break;
+    case 'v':
+       _vol= inputVal.toFloat(); 
+      this->volume(_vol);
+      break;
+    default:
+      //request->send_P(200, "text/html", index_html);  
+      break;
+  }
+    
+ }
+    
+);
 
-void btAudio::record(const char * path){
-   /*disableCore0WDT();
-     if(!SD.begin()){
-        Serial.println("Card Mount Failed");
-        return;
-    }
-	uint8_t header[44]={82,73,70,70,86,237,221,3,87,65,86,69,102,109,116,32,16,0,0,0,1,0,2,0,68,172,0,0,16,177,2,0,4,0,16,0,100,97,116,97,255,255,255,255};
-    _file = SD.open(path,FILE_WRITE);
-	_file.write(header, 44);
-	_postprocess = 4;
-	//_file.close(); */
-}
+   _server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send_P(200, "text/html", index_html);
+  });
 
-int  btAudio::postProc(){
-		return _postprocess;
-	} 
+   _server.begin();
+}	
