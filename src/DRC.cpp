@@ -64,7 +64,10 @@ int16_t DRC::softKnee(float x){
 		// add in make up gain
 		dBy+=_mu;
 		
-
+		/*polynomial approximation (newtons divided differences)
+		for fractional part of pow10f(dB/20). The integral part is 
+		determined from a lookup table(G). Max error is 0.01%.
+		*/
 		if(dBy<0){
 			int integ=  (int)dBy;
 			integ-=1;
