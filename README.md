@@ -16,6 +16,7 @@ The code exposes the A2DP profile(Bluetooth Audio) available in ESP32 boards usi
 8. [Dynamic Range Compression](#h)
 	1. [DRC: Partial Control](#h1)
 	2. [DRC: Full Control](#h2)
+	3. [DRC: Approximation](#h3)
 9. [Not so simple audio](#i)
 
 
@@ -452,6 +453,122 @@ void loop() {
 }
 
 ```
+<a name="h3"></a>
+## Approximate Dynamic Range Compression
+Dynamic Range Compression is very computationaly expensive. I found for my esp32 the big stress was converting the computed gain (dB) back to a 16 bit integer. This required computing `pow10f(x/20)` which became a severe bottlekneck. This operation took takes about 5 microseconds to compute. For a stereo system that's 10 microseconds. Considering there is only 11.3 microseconds between stereo samples for performing signal processing 10 microseconds for one line of code is abhorrent. 
+<br>
+I thought about precomputing the values and creating a lookup table but that would require > 130KB of memory. That would not be the polite thing to do. Program storage space is valuable, particularly as the ESP32 uses a lot of memory for WIFI and Bluetooth. The compromise was to use a lookup table for integral part of `x` and a polynomial apprxomation for the fractional part of `x`. As `x` only ranges between -90dB and 90dB for signed 16 bit integers we can create a look up table for the integral part using less than 400 bytes. For the fractional part we use [Newton's Divided Difference](https://en.wikipedia.org/wiki/Newton_polynomial) method for polynomial interpolation between the integer parts. Long story short this method has an accuracy of 0.01% and runs in 0.2 microseconds.  If you just use the intger lookup method the error is greater than 10% and takes 0.1 microseconds. In my opinion the extra 0.1 microseconds is worth the 1000 fold increase in accuracy. The code below is covered in the [benchLookup](examples/benchLookup/benchLookup.ino) example. I may extend this to a cubic approximation to see what the accuracy/performance tradeoff is. That would require me to do some more maths...
+
+```cpp
+void setup() {
+ Serial.begin(115200);
+ 
+// Create lookup table
+float lu[199];
+ for(int i = -99; i <100;i++){
+  lu[i+99]=pow10f(i/20.0);
+}
+
+// test data ranges between -10 and 10 dB
+float temp=-10.0;
+float val[200];
+for(int i = 0; i <200;i++){
+  temp+=.1;
+  val[i]= temp;
+}
+
+
+// exact solution 
+float outvalEx[200];
+unsigned long t1 =micros();
+for(int i = 0; i <200;i++){
+  outvalEx[i]= pow10f(val[i]/20.0f);
+}
+unsigned long t2 =micros();  
+Serial.print("Exact Method: ");
+Serial.print((t2-t1)/200.0);
+Serial.println(" Microseconds per transform");
+
+
+// approximate method 
+
+float outvalAppi[200];
+
+t1 =micros();
+for(int i = 0; i <200;i++){
+    outvalAppi[i]= lu[(int)val[i]+99];
+}
+t2=micros();
+Serial.print("Approximate Method(lookup): ");
+Serial.print((t2-t1)/200.0);
+Serial.println(" Microseconds per transform");
+
+
+// approximate method 
+float frac;
+float outvalApp[200];
+
+t1 =micros();
+for(int i = 0; i <200;i++){
+  float input =val[i];
+  if(input<0){
+    int integ=  (int)input;
+    integ-=1;
+    frac= input-integ;
+    outvalApp[i]= 1.0f+ (0.1146f+0.0074f*frac)*frac;
+    outvalApp[i]*=lu[integ+99];
+  }else{
+    int integ=  (int)input;
+    frac= input-integ;
+    outvalApp[i]= 1.0f+ (0.1146f+0.0074f*frac)*frac;
+    outvalApp[i]*=lu[integ+99];
+  }
+}
+t2=micros();
+Serial.print("Approximate Method: ");
+Serial.print((t2-t1)/200.0);
+Serial.println(" Microseconds per transform");
+
+float err=0.0;
+float maxerr=0.0;
+
+
+// Approximation error(lookup)
+for(int i = 0; i <200;i++){
+  err= abs((outvalAppi[i]-outvalEx[i])/outvalEx[i]*100);
+  if(err>maxerr){
+    maxerr=err;
+  }
+}
+Serial.print("Approximate method(lookup) max error is: ");
+Serial.print(maxerr);
+Serial.println("%");
+
+maxerr=0;
+// Approximation error(polynomial)
+for(int i = 0; i <200;i++){
+  err= abs((outvalApp[i]-outvalEx[i])/outvalEx[i]*100);
+  if(err>maxerr){
+    maxerr=err;
+  }
+}
+Serial.print("Approximate method (polynomial) max error is: ");
+Serial.print(maxerr);
+Serial.println("%");
+
+}
+
+void loop() {
+  // put your main code here, to run repeatedly:
+delay(1000);
+}
+```
+If you run the above code you should get results like this on the serial monitor. 
+
+<p align="center">
+  <img src="readme/approximation.png" width="600" />
+</p> 
+
 <a name="i"></a>
 ## Not so simple audio
 What if [you hate classes/Object Oriented Programming](https://medium.com/better-programming/object-oriented-programming-the-trillion-dollar-disaster-92a4b666c7c7 ) and don't want to use my code but still want Bluetooth audio. Well this section covers just how to do that with the [underTheHood](examples/underTheHood/underTheHood.ino) example. It uses the minimum amount of ESP32 code to get audio output on I2S. I ain't gonna explain this. The reason I wrote the library is so that I wouldn't have to explain low level ESP32 code. However, for developers it may be easier to work with the raw ESP32 code as you can see the all the moving parts and dependencies more easily. However, for an end user(not a developer) I think a class based approach that hides these details is the way to go. Whatever your thoughts, I think I'm unlikely to shift from the object-oriented programming to more functional programming for this library. 
