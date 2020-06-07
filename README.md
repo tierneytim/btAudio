@@ -455,9 +455,9 @@ void loop() {
 ```
 <a name="h3"></a>
 ## Approximate Dynamic Range Compression
-Dynamic Range Compression is very computationaly expensive. I found for my esp32 the big stress was converting the computed gain (dB) back to a 16 bit integer. This required computing `pow10f(x/20)` which became a severe bottlekneck. This operation took takes about 5 microseconds to compute. For a stereo system that's 10 microseconds. Considering there is only 11.3 microseconds between stereo samples for performing signal processing 10 microseconds for one line of code is abhorrent. 
+Dynamic Range Compression is very computationaly expensive. I found for my esp32 the big stress was converting the computed gain (dB) back to a 16 bit integer. This required computing `pow10f(x/20)` which became a severe bottlekneck. This operation took takes about 5 microseconds to compute. For a stereo system that's 10 microseconds. Considering there is only 11.3 microseconds between stereo samples using 10 microseconds for one line of code is abhorrent. 
 <br>
-I thought about precomputing the values and creating a lookup table but that would require > 130KB of memory. That would not be the polite thing to do. Program storage space is valuable, particularly as the ESP32 uses a lot of memory for WIFI and Bluetooth. The compromise was to use a lookup table for integral part of `x` and a polynomial apprxomation for the fractional part of `x`. As `x` only ranges between -90dB and 90dB for signed 16 bit integers we can create a look up table for the integral part using less than 400 bytes. For the fractional part we use [Newton's Divided Difference](https://en.wikipedia.org/wiki/Newton_polynomial) method for polynomial interpolation between the integer parts. Long story short this method has an accuracy of 0.01% and runs in 0.2 microseconds.  If you just use the intger lookup method the error is greater than 10% and takes 0.1 microseconds. In my opinion the extra 0.1 microseconds is worth the 1000 fold increase in accuracy. The code below is covered in the [benchLookup](examples/benchLookup/benchLookup.ino) example. I may extend this to a cubic approximation to see what the accuracy/performance tradeoff is. That would require me to do some more maths...
+I thought about precomputing the values and creating a lookup table but that would require > 130KB of memory. That would not be the polite thing to do. Program storage space is valuable, particularly as the ESP32 uses a lot of memory for WIFI and Bluetooth. The compromise was to use a lookup table for integral part of `x` and a polynomial apprxomation for the fractional part of `x`. As `x` only ranges between -90dB and 90dB for signed 16 bit integers we can create a look up table for the integral part using less than 400 bytes. For the fractional part we use [Newton's Divided Difference](https://en.wikipedia.org/wiki/Newton_polynomial) method for polynomial interpolation between the integer parts. Long story short this method has an accuracy of 0.01% and runs in 0.2 microseconds.  If you just use the intger lookup method the error is greater than 10% and takes 0.1 microseconds. In my opinion the extra 0.1 microseconds is worth the 1000 fold increase in accuracy. The code below is covered in the [benchLookup](examples/benchLookup/benchLookup.ino) example. 
 
 ```cpp
 void setup() {
@@ -566,7 +566,7 @@ delay(1000);
 If you run the above code you should get results like this on the serial monitor. 
 
 <p align="center">
-  <img src="readme/approximation.png" width="600" />
+  <img src="readme/approximation.PNG" width="600" />
 </p> 
 
 <a name="i"></a>
