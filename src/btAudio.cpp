@@ -127,11 +127,11 @@ void btAudio::i2sCallback(const uint8_t *data, uint32_t len){
    case FILTER:
 		for(int i=0;i<n;i++){
 		 //process left channel
-		 fy[0] = _filtLhp.process(_filtLlp.process((*data16)*_vol));
+		 fy[0] = (int16_t)_filtLhp.process(_filtLlp.process((*data16)*_vol));
 		 data16++;
 		 
 		 // process right channel
-		  fy[1] = _filtRhp.process(_filtRlp.process((*data16)*_vol));
+		  fy[1] =(int16_t) _filtRhp.process(_filtRlp.process((*data16)*_vol));
 		 data16++; 
 		 i2s_write(I2S_NUM_0, fy, jump, &i2s_bytes_write,  100 );
 		} 
@@ -153,13 +153,11 @@ void btAudio::i2sCallback(const uint8_t *data, uint32_t len){
    case FILTER_COMPRESS:
       for(int i=0;i<n;i++){
 		 //process left channel
-		 fy[0] = _filtLhp.process(_filtLlp.process((*data16)*_vol));
-		 fy[0] = _DRCL.softKnee(fy[0]*1.0f);
+		 fy[0] = _DRCL.softKnee(_filtLhp.process(_filtLlp.process((*data16)*_vol)));
 		 data16++;
 		 
 		 // process right channel
-		 fy[1] = _filtRhp.process(_filtRlp.process((*data16)*_vol));
-		 fy[1] = _DRCR.softKnee(fy[1]*1.0f);
+		 fy[1] = _DRCR.softKnee(_filtRhp.process(_filtRlp.process((*data16)*_vol)));
 		 data16++;
 		 i2s_write(I2S_NUM_0, fy, jump, &i2s_bytes_write,  100 );
 		}
