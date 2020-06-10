@@ -17,16 +17,20 @@ The code exposes the A2DP profile(Bluetooth Audio) available in ESP32 boards usi
 	1. [DRC: Partial Control](#h1)
 	2. [DRC: Full Control](#h2)
 	3. [DRC: Approximation](#h3)
-9. [Not so simple audio](#i)
+9. [Wifi Interface](#i)
+	
+[Appendix I: Not so simple audio](#app)
 
 
 <a name="a"></a>
 ## Installation
-Download respoitory.
+1. [Install the arduino IDE](https://www.arduino.cc/en/main/software)
+2. [Install the esp32 core for arduino](https://github.com/espressif/arduino-esp32/blob/master/docs/arduino-ide/boards_manager.md)
+3. Download this respoitory.
 <p align="center">
   <img src="readme/download.png" width="600" />
 </p>
- Within the arduino IDE under Sketch>>Include Library>> select "Add .ZIP library". Then select the downloaded zip file. 
+ 4. Within the arduino IDE under Sketch>>Include Library>> select "Add .ZIP library". Then select the downloaded zip file. 
 <p align="center">
   <img src="readme/includeLibrary.png" width="450" />
 </p>
@@ -104,29 +108,6 @@ Mine looks like this. While making this project I didn't have access to jumper w
 
 2. Upload the [minimalAudio](examples/minimalAudio/minimalAudio.ino) example using the micro USB cable.
 
-```cpp
-#include <btAudio.h>
-
-// Sets the name of the audio device
-btAudio audio = btAudio("ESP_Speaker");
-
-void setup() {
- 
- // streams audio data to the ESP32   
- audio.begin();
- 
- //  outputs the received data to an I2S DAC https://www.adafruit.com/product/3678
- int bck = 26; 
- int ws = 27;
- int dout = 25;
- audio.I2S(bck, dout, ws);
-}
-
-void loop() {
-
-}
-```
-
 3. Disconenct USB from computer and power the ESP32 board from a USB power supply near the speaker. Don't worry about it losing power it will remember the code you uploaded previously.
 4. Connect the Line out from the DAC to the the Line in on the stereo/Hi-Fi using your Aux cable. You could also used wired headphones instead of an Aux cable to a speaker.
 My setup looks like this.
@@ -168,7 +149,7 @@ void loop() {
 <a name="d"></a>
 ## Changing Volume
 This section covers the [changeVolume](examples/changeVolume/changeVolume.ino) example.
-Volume is a tricky issue. Ideally, the sender should issue a  request for volume to be changed at the receiver (using something like [AVRCP](https://en.wikipedia.org/wiki/List_of_Bluetooth_profiles#Audio/Video_Remote_Control_Profile_(AVRCP))). The sender should not change the data before it is transmitted. My MP3 player does not change the data before transmission. My laptop and phone do. One option is to digitally alter the data before it goes to the DAC but after it has been received by the ESP32. We can do this by using the `btAudio::volume` method. It accepts one argument: a floating point number between 0 and 1. It then scales the data by that number. A super cool feature of many ESP32s is that they have two cores. One can do all the setup/ audio on one core (core 0) while the other can handle the user interface (core 1). Any code put in `void loop()` will run on core 1. We'll take advantage of that in later sections.
+Volume is a tricky issue. Ideally, the sender should issue a  request for volume to be changed at the receiver (using something like [AVRCP](https://en.wikipedia.org/wiki/List_of_Bluetooth_profiles#Audio/Video_Remote_Control_Profile_(AVRCP))). The sender should not change the data before it is transmitted. My MP3 player does not change the data before transmission. My laptop and phone do. One option is to digitally alter the data before it goes to the DAC but after it has been received by the ESP32. We can do this by using the `btAudio::volume` method. It accepts one argument: a floating point number between 0 and 1. It then scales the data by that number. 
 
 ```cpp
 #include <btAudio.h>
@@ -198,7 +179,13 @@ audio.volume(1.0);
 <a name="e"></a>
 ## Serial Control
 This section covers the [serialControl](examples/serialControl/serialControl.ino) example.
-If you want to control any of the features proposed here you may need to create a hardware interface (buttons, potentiometers, etc). In the meantime I've created a serial interface for you to play with.  It's pretty simple and not necessarily the best method but it works. The idea is to send a string to over the comm port (e.g. `vol`). Follow this string with a terminator(e.g. `#`) and then follow this with a number (e.g. `0.42`). So the full comand to cut the volume by half would be `vol#0.5`. Once the code in the next section is uploaded try and experiment by opening the serial monitor and changing the volume a bit. This general approach can be adpated for any method. 
+If you want to control any of the features proposed here you may need to create a hardware interface (buttons, potentiometers, etc). In the meantime I've created a serial interface for you to play with.  It's pretty simple and not necessarily the best method but it works. The idea is to send a string to over the comm port (e.g. `vol`). Follow this string with a terminator(e.g. `#`) and then follow this with a number (e.g. `0.42`). So the full comand to cut the volume by half would be `vol#0.5`. In the image below you can see waht this looks like in hte serial monitor.
+
+<p align="center">
+  <img src="readme/serial.PNG" width="600" />
+</p> 
+
+ Once the code in the next section is uploaded try and experiment by opening the serial monitor and changing the volume a bit. This general approach can be adpated for any method. 
 ```cpp
 #include <btAudio.h>
 
@@ -457,7 +444,7 @@ void loop() {
 ## Approximate Dynamic Range Compression
 Dynamic Range Compression is very computationaly expensive. I found for my esp32 the big stress was converting the computed gain (dB) back to a 16 bit integer. This required computing `pow10f(x/20)` which became a severe bottlekneck. This operation took takes about 5 microseconds to compute. For a stereo system that's 10 microseconds. Considering there is only 11.3 microseconds between stereo samples using 10 microseconds for one line of code is abhorrent. 
 <br>
-I thought about precomputing the values and creating a lookup table but that would require > 130KB of memory. That would not be the polite thing to do. Program storage space is valuable, particularly as the ESP32 uses a lot of memory for WIFI and Bluetooth. The compromise was to use a lookup table for integral part of `x` and a polynomial apprxomation for the fractional part of `x`. As `x` only ranges between -90dB and 90dB for signed 16 bit integers we can create a look up table for the integral part using less than 400 bytes. For the fractional part we use [Newton's Divided Difference](https://en.wikipedia.org/wiki/Newton_polynomial) method for polynomial interpolation between the integer parts. Long story short this method has an accuracy of 0.01% and runs in 0.2 microseconds.  If you just use the intger lookup method the error is greater than 10% and takes 0.1 microseconds. In my opinion the extra 0.1 microseconds is worth the 1000 fold increase in accuracy. The code below is covered in the [benchLookup](examples/benchLookup/benchLookup.ino) example. 
+I thought about precomputing the values and creating a lookup table but that would require > 130KB of memory. That would not be the polite thing to do. Program storage space is valuable, particularly as the ESP32 uses a lot of memory for WIFI and Bluetooth. The compromise was to use a lookup table for integral part of `x` and a polynomial apprxomation for the fractional part of `x`. As `x` only ranges between -90dB and 90dB for signed 16 bit integers we can create a look up table for the integral part using less than 400 bytes. For the fractional part we use [Newton's Divided Difference](https://en.wikipedia.org/wiki/Newton_polynomial) method for polynomial interpolation between the integer parts. Long story short this method has an accuracy of 0.01% and runs in 0.2 microseconds.  If you just use the intger lookup method the error is greater than 10% and takes 0.1 microseconds. In my opinion the extra 0.1 microseconds is worth the 1000 fold increase in accuracy. The code below is covered in the [benchLookup](examples/benchLookup/benchLookup.ino) example. This example isn't crucial but useful if you want to see the difference in methodologies.
 
 ```cpp
 void setup() {
@@ -570,6 +557,56 @@ If you run the above code you should get results like this on the serial monitor
 </p> 
 
 <a name="i"></a>
+## Wifi interface
+This section covers the [webInterface example](examples/webInterface/webInterface.ino)
+The serial interface is useful for debugging but not very useful if you have the esp32 hooked up behind a speaker. To edit the DSP paramters wirelessly i've created a very simple webserver that you can access via any browser connected to the same network as the ESP32. It's pretty straightforward to use. Simply create a `webDSP` object and pass it your SSID, internet password and the `btAudio` object.
+
+```cpp
+#include<webDSP.h>
+#include<btAudio.h>
+
+// create audio object 
+btAudio audio = btAudio("ESP_Speaker");
+
+// create webserver object
+webDSP web;
+
+void setup() {
+  Serial.begin(115200);  
+  
+  //start streaming audio
+  audio.begin();
+  
+  //transmit data to DAC
+  int bck = 26; 
+  int ws = 27;
+  int dout = 25;  
+  audio.I2S(bck, dout, ws);
+  
+  // replace ssid and password with your details
+  const char* ssid = "";
+  const char* password = "";
+  web.begin(ssid,password ,&audio); 
+}
+
+void loop() {
+  // continually check on client 
+  web._server.handleClient();
+}
+
+```
+
+ The first time you run this bit of code you should have the serial monitor open so that you can see what the IP address assigned to your ESP32 is. Once you know this number simply enter it in to your browser and you'll be greeted by this webpage!
+
+<p align="center">
+  <img src="readme/webpage.PNG" width="600" />
+</p> 
+
+You can expand each of the three sections and edit any of the paramters of the filters, volume or dynamic range compression. 
+
+
+
+<a name="app"></a>
 ## Not so simple audio
 What if [you hate classes/Object Oriented Programming](https://medium.com/better-programming/object-oriented-programming-the-trillion-dollar-disaster-92a4b666c7c7 ) and don't want to use my code but still want Bluetooth audio. Well this section covers just how to do that with the [underTheHood](examples/underTheHood/underTheHood.ino) example. It uses the minimum amount of ESP32 code to get audio output on I2S. I ain't gonna explain this. The reason I wrote the library is so that I wouldn't have to explain low level ESP32 code. However, for developers it may be easier to work with the raw ESP32 code as you can see the all the moving parts and dependencies more easily. However, for an end user(not a developer) I think a class based approach that hides these details is the way to go. Whatever your thoughts, I think I'm unlikely to shift from the object-oriented programming to more functional programming for this library. 
 
