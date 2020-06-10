@@ -21,7 +21,7 @@ public:
 			_z2[i] = fprev * _b2[i] - _a2[i] * fout;
 			fprev=fout;
 		}
-		return fout;
+		return (T)fout;
 	}
 	
 
