@@ -65,7 +65,7 @@ void btAudio::getAddress(esp_a2d_cb_event_t event, esp_a2d_cb_param_t*param){
         break;
     }
     default:
-       // log_e("a2dp invalid cb event: %d", event);
+        log_e("a2dp invalid cb event: %d", event);
         break;
     }
 }
@@ -107,7 +107,8 @@ void btAudio::i2sCallback(const uint8_t *data, uint32_t len){
   size_t i2s_bytes_write = 0; 
   int16_t* data16=(int16_t*)data; //playData doesnt want const
   int16_t fy[2];
-	
+  int16_t* stPoint= data16;
+  
   int jump =4; //how many bytes at a time get sent to buffer
   int  n = len/jump; // number of byte chunks	
 	switch (_postprocess) {
@@ -120,23 +121,19 @@ void btAudio::i2sCallback(const uint8_t *data, uint32_t len){
 		 // process right channel
 		 fy[1] = (int16_t)((*data16)*_vol);
 		 data16++;
-		 i2s_write(I2S_NUM_0, fy, jump, &i2s_bytes_write,  portMAX_DELAY ); 
+		 i2s_write(I2S_NUM_0, fy, jump, &i2s_bytes_write,  100 ); 
 		}
 		break;
    case FILTER:
 		for(int i=0;i<n;i++){
 		 //process left channel
-		 fy[0] = (*data16);
-		 fy[0] = (int16_t)_filtLlp.process(fy[0]*_vol);
-		 fy[0] = _filtLhp.process(fy[0]);
+		 fy[0] = _filtLhp.process(_filtLlp.process((*data16)*_vol));
 		 data16++;
 		 
 		 // process right channel
-		 fy[1] = (*data16);
-		 fy[1] = (int16_t)_filtRlp.process(fy[1]*_vol);
-		 fy[1] = _filtRhp.process(fy[1]);
+		  fy[1] = _filtRhp.process(_filtRlp.process((*data16)*_vol));
 		 data16++; 
-		 i2s_write(I2S_NUM_0, fy, jump, &i2s_bytes_write,  portMAX_DELAY );
+		 i2s_write(I2S_NUM_0, fy, jump, &i2s_bytes_write,  100 );
 		} 
 		break;
    case COMPRESS:
@@ -150,21 +147,21 @@ void btAudio::i2sCallback(const uint8_t *data, uint32_t len){
 		 fy[1] = (*data16);
 		 fy[1]=_DRCR.softKnee(fy[1]*_vol);
 		 data16++;
-		 i2s_write(I2S_NUM_0, fy, jump, &i2s_bytes_write,  portMAX_DELAY );
+		 i2s_write(I2S_NUM_0, fy, jump, &i2s_bytes_write,  100 );
 		}
 		break;
    case FILTER_COMPRESS:
       for(int i=0;i<n;i++){
 		 //process left channel
-		 fy[0] = _filtLhp.process(_filtLlp.process(*data16));
-		 fy[0] = _DRCL.softKnee(fy[0]*_vol);
+		 fy[0] = _filtLhp.process(_filtLlp.process((*data16)*_vol));
+		 fy[0] = _DRCL.softKnee(fy[0]*1.0f);
 		 data16++;
 		 
 		 // process right channel
-		 fy[1] = _filtRhp.process(_filtRlp.process(*data16));
-		 fy[1] = _DRCR.softKnee(fy[1]*_vol);
+		 fy[1] = _filtRhp.process(_filtRlp.process((*data16)*_vol));
+		 fy[1] = _DRCR.softKnee(fy[1]*1.0f);
 		 data16++;
-		 i2s_write(I2S_NUM_0, fy, jump, &i2s_bytes_write,  portMAX_DELAY );
+		 i2s_write(I2S_NUM_0, fy, jump, &i2s_bytes_write,  100 );
 		}
 		break;	
   }
@@ -237,83 +234,3 @@ void btAudio::decompress(){
 	}
 }
 
-
-////////////////////////////////////////////////////////////////////
-/////////////////////// WIFI Functionality /////////////////////////
-////////////////////////////////////////////////////////////////////
-void btAudio::webDSP(const char* ssid, const char* password){
-  WiFi.mode(WIFI_STA);
-  while(WiFi.status() != WL_CONNECTED) {
-    WiFi.begin(ssid, password);
-    delay(1000);
-    Serial.print(".");
-  }
-  Serial.print("IP Address: ");
-  Serial.println(WiFi.localIP());
-
-  // Send web page with input fields to client
-
-_server.on("/get", HTTP_GET, [this] (AsyncWebServerRequest *request) {
-
-  AsyncWebParameter *par = request->getParam(0);
-  String inputName = par->name();
-  String inputVal = par->value();
-  char sw = inputName.charAt(0);
-  request->send_P(200, "text/html", index_html);
-   
-  switch(sw) {
-    case 'h': 
-	  this->createFilter(3, inputVal.toFloat(), highpass);
-      break;
-    case 'l': 
-      this->createFilter(3, inputVal.toFloat(), lowpass);
-      break;
-    case 'c': 
-      this->decompress();
-      break;
-    case 'g': 
-      _mu =inputVal.toFloat();
-      this->compress(_T,_alphAtt,_alphRel,_R,_w,_mu);
-      break;
-    case 't': 
-      _T =inputVal.toFloat();
-      this->compress(_T,_alphAtt,_alphRel,_R,_w,_mu);
-      break;
-    case 'a': 
-      _alphAtt =inputVal.toFloat();
-      this->compress(_T,_alphAtt,_alphRel,_R,_w,_mu);
-      break;
-    case 'r': 
-      _alphRel =inputVal.toFloat();
-      this->compress(_T,_alphAtt,_alphRel,_R,_w,_mu);
-      break;
-    case 'w': 
-      _w =inputVal.toFloat();
-      this->compress(_T,_alphAtt,_alphRel,_R,_w,_mu);
-      break;
-    case 'f': 
-      this->stopFilter(); 
-      break;
-    case 'R':
-      _R = inputVal.toFloat(); 
-      this->compress(_T,_alphAtt,_alphRel,_R,_w,_mu);
-      break;
-    case 'v':
-       _vol= inputVal.toFloat(); 
-      this->volume(_vol);
-      break;
-    default:
-      //request->send_P(200, "text/html", index_html);  
-      break;
-  }
-    
- }
-    
-);
-
-   _server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send_P(200, "text/html", index_html);
-  });
-
-   _server.begin();
-}	
