@@ -83,7 +83,7 @@ void btAudio::I2S(int bck, int dout, int ws) {
     .communication_format = static_cast<i2s_comm_format_t>(I2S_COMM_FORMAT_I2S|I2S_COMM_FORMAT_I2S_MSB),
     .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1, // default interrupt priority
     .dma_buf_count = 3,
-    .dma_buf_len = 300,
+    .dma_buf_len = 600,
     .use_apll = false,
     .tx_desc_auto_clear = true
   };
@@ -107,7 +107,7 @@ void btAudio::i2sCallback(const uint8_t *data, uint32_t len){
   size_t i2s_bytes_write = 0; 
   int16_t* data16=(int16_t*)data; //playData doesnt want const
   int16_t fy[2];
-  int16_t* stPoint= data16;
+  float temp;
   
   int jump =4; //how many bytes at a time get sent to buffer
   int  n = len/jump; // number of byte chunks	
@@ -127,11 +127,27 @@ void btAudio::i2sCallback(const uint8_t *data, uint32_t len){
    case FILTER:
 		for(int i=0;i<n;i++){
 		 //process left channel
-		 fy[0] = (int16_t)_filtLhp.process(_filtLlp.process((*data16)*_vol));
-		 data16++;
+		 temp = _filtLlp.process(_filtLhp.process((*data16)*_vol));
+		 
+		 // overflow check
+		 if(temp>32767){
+		 temp=32767;
+		 }
+		 if(temp < -32767){
+			temp= -32767;
+		 }
+		 fy[0] = (int16_t)(temp);
+	     data16++;
 		 
 		 // process right channel
-		  fy[1] =(int16_t) _filtRhp.process(_filtRlp.process((*data16)*_vol));
+		 temp = _filtRlp.process(_filtRhp.process((*data16)*_vol));
+		 if(temp>32767){
+		 temp=32767;
+		 }
+		 if(temp < -32767){
+			temp= -32767;
+		 }
+		 fy[1] =(int16_t) (temp);
 		 data16++; 
 		 i2s_write(I2S_NUM_0, fy, jump, &i2s_bytes_write,  100 );
 		} 
@@ -152,11 +168,11 @@ void btAudio::i2sCallback(const uint8_t *data, uint32_t len){
 		break;
    case FILTER_COMPRESS:
       for(int i=0;i<n;i++){
-		 //process left channel
+		 //process left channel(overflow check built into DRC)
 		 fy[0] = _DRCL.softKnee(_filtLhp.process(_filtLlp.process((*data16)*_vol)));
 		 data16++;
 		 
-		 // process right channel
+		 //process right channel(overflow check built into DRC)
 		 fy[1] = _DRCR.softKnee(_filtRhp.process(_filtRlp.process((*data16)*_vol)));
 		 data16++;
 		 i2s_write(I2S_NUM_0, fy, jump, &i2s_bytes_write,  100 );
