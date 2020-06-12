@@ -72,13 +72,15 @@ int16_t DRC::softKnee(float x){
 			int integ=  (int)dBy;
 			integ-=1;
 			float frac= dBy-integ;
-			dBy = 1.0f+ (0.1146f+0.0074f*frac)*frac;
+			dBy= frac*(frac*(0.0003027786f*frac+0.006535915f)+0.115179760f)+1.0f;
 			dBy*=G[integ+96];
 			dBy*=x;
 		}else{
 			int integ=  (int)dBy;
 			float frac= dBy-integ;
-			dBy= 1.0f+ (0.1146f+0.0074f*frac)*frac;
+			//dBy= 1.0f+ (0.1146f+0.0074f*frac)*frac;
+			dBy= frac*(frac*(0.0003027786f*frac+0.006535915f)+0.115179760f)+1.0f;
+			
 			dBy*=G[integ+96];
 			dBy*=x;
 		}
