@@ -41,10 +41,10 @@ webDSP::webDSP() {
   Serial.println(inputName);
   switch(sw) {
     case 'h': 
-    _audio->createFilter(1, inputVal.toFloat(), highpass);
+    _audio->createFilter(3, inputVal.toFloat(), highpass);
       break;
     case 'l': 
-      _audio->createFilter(1, inputVal.toFloat(), lowpass);
+      _audio->createFilter(3, inputVal.toFloat(), lowpass);
       break;
     case 'c': 
       _audio->decompress();
