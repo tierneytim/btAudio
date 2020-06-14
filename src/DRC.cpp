@@ -66,7 +66,7 @@ int16_t DRC::softKnee(float x){
 		
 		/*polynomial approximation (newtons divided differences)
 		for fractional part of pow10f(dB/20). The integral part is 
-		determined from a lookup table(G). Max error is 0.01%.
+		determined from a lookup table(G). Precision > 16bits.
 		*/
 		if(dBy<0){
 			int integ=  (int)dBy;
