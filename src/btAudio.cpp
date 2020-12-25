@@ -1,10 +1,15 @@
 #include "btAudio.h"
-
 ////////////////////////////////////////////////////////////////////
 ////////////// Nasty statics for i2sCallback ///////////////////////
 ////////////////////////////////////////////////////////////////////
  float btAudio::_vol=0.95;
  uint8_t btAudio::_address[6];
+ 
+ String btAudio::title="";
+ String btAudio::album="";
+ String btAudio::genre="";
+ String btAudio::artist="";
+ 
  int btAudio::_postprocess=0;
  filter btAudio::_filtLhp = filter(2,44100,3,highpass); 
  filter btAudio::_filtRhp = filter(2,44100,3,highpass);
@@ -32,8 +37,12 @@ void btAudio::begin() {
   esp_bluedroid_init();
   esp_bluedroid_enable();
    
-    //set up device name
+  //set up device name
   esp_bt_dev_set_device_name(_devName);
+  
+  // initialize AVRCP controller
+  esp_avrc_ct_init();
+  esp_avrc_ct_register_callback(avrc_callback);
   
   // this sets up the audio receive
   esp_a2d_sink_init();
@@ -68,6 +77,51 @@ void btAudio::getAddress(esp_a2d_cb_event_t event, esp_a2d_cb_param_t*param){
         log_e("a2dp invalid cb event: %d", event);
         break;
     }
+}
+void btAudio::updateMeta() {
+  uint8_t attr_mask = ESP_AVRC_MD_ATTR_TITLE | ESP_AVRC_MD_ATTR_ARTIST | ESP_AVRC_MD_ATTR_ALBUM | ESP_AVRC_MD_ATTR_GENRE;
+  esp_avrc_ct_send_metadata_cmd(1, attr_mask);
+}
+void btAudio::avrc_callback(esp_avrc_ct_cb_event_t event, esp_avrc_ct_cb_param_t *param) {
+  esp_avrc_ct_cb_param_t *rc = (esp_avrc_ct_cb_param_t *)(param);
+  char *attr_text;
+  String mystr;
+
+  switch (event) {
+    case ESP_AVRC_CT_METADATA_RSP_EVT: {
+      attr_text = (char *) malloc (rc->meta_rsp.attr_length + 1);
+      memcpy(attr_text, rc->meta_rsp.attr_text, rc->meta_rsp.attr_length);
+      attr_text[rc->meta_rsp.attr_length] = 0;
+      mystr = String(attr_text);
+
+      switch (rc->meta_rsp.attr_id) {
+        case ESP_AVRC_MD_ATTR_TITLE:
+          //Serial.print("Title: ");
+          //Serial.println(mystr);
+		  title= mystr;
+          break;
+        case ESP_AVRC_MD_ATTR_ARTIST:
+          //Serial.print("Artist: ");
+          //Serial.println(mystr);
+          artist= mystr;
+		  break;
+        case ESP_AVRC_MD_ATTR_ALBUM:
+          //Serial.print("Album: ");
+          //Serial.println(mystr);
+          album= mystr;
+		  break;
+        case ESP_AVRC_MD_ATTR_GENRE:
+          //Serial.print("Genre: ");
+          //Serial.println(mystr);
+          genre= mystr;
+		  break;
+      }
+      free(attr_text);
+  }break;
+    default:
+      ESP_LOGE(BT_RC_CT_TAG, "unhandled AVRC event: %d", event);
+      break;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////
