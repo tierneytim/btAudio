@@ -123,7 +123,9 @@ void btAudio::avrc_callback(esp_avrc_ct_cb_event_t event, esp_avrc_ct_cb_param_t
       break;
   }
 }
-
+void btAudio::setSinkCallback(void (*sinkCallback)(const uint8_t *data, uint32_t len) ){
+	 esp_a2d_sink_register_data_callback(sinkCallback);
+}
 ////////////////////////////////////////////////////////////////////
 ////////////////// I2S Audio Functionality /////////////////////////
 ////////////////////////////////////////////////////////////////////
