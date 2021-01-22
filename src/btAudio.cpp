@@ -4,19 +4,20 @@
 ////////////////////////////////////////////////////////////////////
  float btAudio::_vol=0.95;
  uint8_t btAudio::_address[6];
- 
+ int btAudio::_sampleRate=44100;
+  
  String btAudio::title="";
  String btAudio::album="";
  String btAudio::genre="";
  String btAudio::artist="";
  
  int btAudio::_postprocess=0;
- filter btAudio::_filtLhp = filter(2,44100,3,highpass); 
- filter btAudio::_filtRhp = filter(2,44100,3,highpass);
- filter btAudio::_filtLlp = filter(20000,44100,3,lowpass); 
- filter btAudio::_filtRlp = filter(20000,44100,3,lowpass);  
- DRC btAudio::_DRCL = DRC(44100,60.0,0.001,0.2,4.0,10.0,0.0); 
- DRC btAudio::_DRCR = DRC(44100,60.0,0.001,0.2,4.0,10.0,0.0); 
+ filter btAudio::_filtLhp = filter(2,_sampleRate,3,highpass); 
+ filter btAudio::_filtRhp = filter(2,_sampleRate,3,highpass);
+ filter btAudio::_filtLlp = filter(20000,_sampleRate,3,lowpass); 
+ filter btAudio::_filtRlp = filter(20000,_sampleRate,3,lowpass);  
+ DRC btAudio::_DRCL = DRC(_sampleRate,60.0,0.001,0.2,4.0,10.0,0.0); 
+ DRC btAudio::_DRCR = DRC(_sampleRate,60.0,0.001,0.2,4.0,10.0,0.0); 
 
 ////////////////////////////////////////////////////////////////////
 ////////////////////////// Constructor /////////////////////////////
@@ -47,7 +48,7 @@ void btAudio::begin() {
   // this sets up the audio receive
   esp_a2d_sink_init();
   
-  esp_a2d_register_callback(getAddress);
+  esp_a2d_register_callback(a2d_cb);
   
   // set discoverable and connectable mode, wait to be connected
   esp_bt_gap_set_scan_mode(ESP_BT_SCAN_MODE_CONNECTABLE_DISCOVERABLE);  	
@@ -58,12 +59,11 @@ void btAudio::end() {
   esp_bluedroid_deinit();
   btStop();  
 }
-void btAudio::getAddress(esp_a2d_cb_event_t event, esp_a2d_cb_param_t*param){
-	
-	 switch (event) {
+void btAudio::a2d_cb(esp_a2d_cb_event_t event, esp_a2d_cb_param_t*param){
+	esp_a2d_cb_param_t *a2d = (esp_a2d_cb_param_t *)(param);
+	switch (event) {
     case ESP_A2D_CONNECTION_STATE_EVT:{
-        esp_a2d_cb_param_t *a2d = (esp_a2d_cb_param_t *)(param);
-       
+        
         uint8_t* temp= a2d->conn_stat.remote_bda;
         _address[0]= *temp;
 		_address[1]= *(temp+1);
@@ -71,6 +71,28 @@ void btAudio::getAddress(esp_a2d_cb_event_t event, esp_a2d_cb_param_t*param){
 		_address[3]= *(temp+3);
 		_address[4]= *(temp+4);
 		_address[5]= *(temp+5);    
+        break;
+    }
+	case ESP_A2D_AUDIO_CFG_EVT: {
+        ESP_LOGI(BT_AV_TAG, "A2DP audio stream configuration, codec type %d", a2d->audio_cfg.mcc.type);
+        // for now only SBC stream is supported
+        if (a2d->audio_cfg.mcc.type == ESP_A2D_MCT_SBC) {
+            _sampleRate = 16000;
+            char oct0 = a2d->audio_cfg.mcc.cie.sbc[0];
+            if (oct0 & (0x01 << 6)) {
+                _sampleRate = 32000;
+            } else if (oct0 & (0x01 << 5)) {
+                _sampleRate = 44100;
+            } else if (oct0 & (0x01 << 4)) {
+                _sampleRate = 48000;
+            }
+            ESP_LOGI(BT_AV_TAG, "Configure audio player %x-%x-%x-%x",
+                     a2d->audio_cfg.mcc.cie.sbc[0],
+                     a2d->audio_cfg.mcc.cie.sbc[1],
+                     a2d->audio_cfg.mcc.cie.sbc[2],
+                     a2d->audio_cfg.mcc.cie.sbc[3]);
+            ESP_LOGI(BT_AV_TAG, "Audio player configured, sample rate=%d", _sampleRate);
+        }
         break;
     }
     default:
@@ -133,7 +155,7 @@ void btAudio::I2S(int bck, int dout, int ws) {
    // i2s configuration
   static const i2s_config_t i2s_config = {
     .mode = static_cast<i2s_mode_t>(I2S_MODE_MASTER | I2S_MODE_TX),
-    .sample_rate = 44100,
+    .sample_rate = _sampleRate,
     .bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT,
     .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT,
     .communication_format = static_cast<i2s_comm_format_t>(I2S_COMM_FORMAT_I2S|I2S_COMM_FORMAT_I2S_MSB),
@@ -248,12 +270,12 @@ void btAudio::createFilter(int n, float fc, int type){
    fc=constrain(fc,2,20000);
    switch (type) {
    case lowpass:
-	_filtLlp= filter(fc,44100,n,type);
-    _filtRlp= filter(fc,44100,n,type);
+	_filtLlp= filter(fc,_sampleRate,n,type);
+    _filtRlp= filter(fc,_sampleRate,n,type);
    break;
    case highpass:
-	_filtLhp= filter(fc,44100,n,type);
-    _filtRhp= filter(fc,44100,n,type);
+	_filtLhp= filter(fc,_sampleRate,n,type);
+    _filtRhp= filter(fc,_sampleRate,n,type);
    break;
    }
 	_filtering=true;
@@ -284,8 +306,8 @@ void btAudio::compress(float T,float alphAtt,float alphRel, float R,float w,floa
 	_w=w;
 	_mu=mu;
 	
-	_DRCL = DRC(44100,T,alphAtt,alphRel,R,w,mu);
-	_DRCR = DRC(44100,T,alphAtt,alphRel,R,w,mu);
+	_DRCL = DRC(_sampleRate,T,alphAtt,alphRel,R,w,mu);
+	_DRCR = DRC(_sampleRate,T,alphAtt,alphRel,R,w,mu);
 	_compressing=true;
 	
 	if(_filtering & _compressing){

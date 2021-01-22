@@ -60,12 +60,12 @@ class btAudio {
     const char *_devName;
 	bool _filtering=false;
 	bool _compressing=false;
-
+    static int  _sampleRate;
 	static int _postprocess;
 	
 	// static function causes a static infection of variables
 	static void i2sCallback(const uint8_t *data, uint32_t len);
-	static void getAddress(esp_a2d_cb_event_t event, esp_a2d_cb_param_t *param);
+	static void a2d_cb(esp_a2d_cb_event_t event, esp_a2d_cb_param_t *param);
 	static void avrc_callback(esp_avrc_ct_cb_event_t event, esp_avrc_ct_cb_param_t *param);
 	
 	// bluetooth address of connected device
