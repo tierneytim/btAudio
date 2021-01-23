@@ -60,7 +60,7 @@ class btAudio {
     const char *_devName;
 	bool _filtering=false;
 	bool _compressing=false;
-    static int  _sampleRate;
+    static uint32_t  _sampleRate;
 	static int _postprocess;
 	
 	// static function causes a static infection of variables

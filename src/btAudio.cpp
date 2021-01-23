@@ -4,7 +4,7 @@
 ////////////////////////////////////////////////////////////////////
  float btAudio::_vol=0.95;
  uint8_t btAudio::_address[6];
- int btAudio::_sampleRate=44100;
+ uint32_t btAudio::_sampleRate=44100;
   
  String btAudio::title="";
  String btAudio::album="";
@@ -91,8 +91,11 @@ void btAudio::a2d_cb(esp_a2d_cb_event_t event, esp_a2d_cb_param_t*param){
                      a2d->audio_cfg.mcc.cie.sbc[1],
                      a2d->audio_cfg.mcc.cie.sbc[2],
                      a2d->audio_cfg.mcc.cie.sbc[3]);
-            ESP_LOGI(BT_AV_TAG, "Audio player configured, sample rate=%d", _sampleRate);
-        }
+					 if(i2s_set_sample_rates(I2S_NUM_0, _sampleRate)==ESP_OK){
+						ESP_LOGI(BT_AV_TAG, "Audio player configured, sample rate=%d", _sampleRate);
+					 }
+		}
+		
         break;
     }
     default:
