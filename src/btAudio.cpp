@@ -4,7 +4,7 @@
 ////////////////////////////////////////////////////////////////////
  float btAudio::_vol=0.95;
  uint8_t btAudio::_address[6];
- uint32_t btAudio::_sampleRate=44100;
+ int32_t btAudio::_sampleRate=44100;
   
  String btAudio::title="";
  String btAudio::album="";
@@ -51,7 +51,7 @@ void btAudio::begin() {
   esp_a2d_register_callback(a2d_cb);
   
   // set discoverable and connectable mode, wait to be connected
-  esp_bt_gap_set_scan_mode(ESP_BT_SCAN_MODE_CONNECTABLE_DISCOVERABLE);  	
+  esp_bt_gap_set_scan_mode(ESP_BT_CONNECTABLE, ESP_BT_GENERAL_DISCOVERABLE);
 }
 void btAudio::end() {
   esp_a2d_sink_deinit();
@@ -161,7 +161,7 @@ void btAudio::I2S(int bck, int dout, int ws) {
     .sample_rate = _sampleRate,
     .bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT,
     .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT,
-    .communication_format = static_cast<i2s_comm_format_t>(I2S_COMM_FORMAT_I2S|I2S_COMM_FORMAT_I2S_MSB),
+    .communication_format = static_cast<i2s_comm_format_t>(I2S_COMM_FORMAT_STAND_I2S|I2S_COMM_FORMAT_STAND_MSB),
     .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1, // default interrupt priority
     .dma_buf_count = 3,
     .dma_buf_len = 600,
