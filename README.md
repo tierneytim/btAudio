@@ -26,7 +26,7 @@ The code exposes the A2DP profile(Bluetooth Audio) available in ESP32 boards usi
 ## Installation
 1. [Install the arduino IDE](https://www.arduino.cc/en/main/software)
 2. [Install the esp32 core for arduino](https://github.com/espressif/arduino-esp32/blob/master/docs/arduino-ide/boards_manager.md)
-3. Download this respoitory.
+3. Download this repository.
 <p align="center">
   <img src="readme/download.png" width="600" />
 </p>
@@ -100,7 +100,7 @@ You will need:
 <a name="c2"></a>
 ### Hardware: Setup
 1. Set up the breadboard. There's a wiring guide for the I2S DAC over at [adafruit](https://learn.adafruit.com/adafruit-i2s-stereo-decoder-uda1334a/circuitpython-wiring-test). The connections to the DAC are the same. Just swap the outputs from the microcontroller in the  adafruit example to the pins you selected for the ESP32 in the [minimalAudio](examples/minimalAudio/minimalAudio.ino) example.
-Mine looks like this. While making this project I didn't have access to jumper wires or a soldering iron (they were at my locked-down workplace). For the jumper wires I just cut up one long blue wire into as many wires as I needed. To attach pins to the DAC I used [Pimoroni push headers](https://shop.pimoroni.com/products/gpio-hammer-header?variant=35643241098). This is not ideal but cheaper than buying a termporary soldering iron. 
+Mine looks like this. While making this project I didn't have access to jumper wires or a soldering iron (they were at my locked-down workplace). For the jumper wires I just cut up one long blue wire into as many wires as I needed. To attach pins to the DAC I used [Pimoroni push headers](https://shop.pimoroni.com/products/gpio-hammer-header?variant=35643241098). This is not ideal but cheaper than buying a temporary soldering iron. 
    
 <p align="center">
   <img src="readme/bread_rotate.jpg" width="600" />
@@ -108,7 +108,7 @@ Mine looks like this. While making this project I didn't have access to jumper w
 
 2. Upload the [minimalAudio](examples/minimalAudio/minimalAudio.ino) example using the micro USB cable.
 
-3. Disconenct USB from computer and power the ESP32 board from a USB power supply near the speaker. Don't worry about it losing power it will remember the code you uploaded previously.
+3. Disconnect USB from computer and power the ESP32 board from a USB power supply near the speaker. Don't worry about it losing power it will remember the code you uploaded previously.
 4. Connect the Line out from the DAC to the the Line in on the stereo/Hi-Fi using your Aux cable. You could also used wired headphones instead of an Aux cable to a speaker.
 My setup looks like this.
 <p align="center">
@@ -121,7 +121,7 @@ My setup looks like this.
 
 <a name="c3"></a>
 ### I2S
-[I2S](https://www.arduino.cc/en/Reference/I2S) is method of digitally transfering audio data between devices. It uses just 3 wires. This is particularly useful in transferring data to an external high performance Digital to Analog Converter (DAC). For instance most ESP32s have 2 8-bit DACs whereas music is usually played over 16-bit DACs (or better). However, you can get cheap 16 bit DACs that you can plug into your speakers/Hi-Fi systems. These DACs receive data from your microcontroller using I2S. The one I have been using is the Adafruit [I2S Stereo decoder](https://www.adafruit.com/product/3678). Not all microcontrollers have I2S communication and Bluetooth Classic/ WIFI. This is why the ESP32 boards are key here. They have both. A simple bit of code to combine both the bluetooth and the I2S is given below. the only difference between this code and the advertising code is calling the `btAudio::I2S` method and specifying the 3 pins that you want to use. A cool feature about ESP32s is that you usually pick whatever pins to do whatever action you want. So feel free to change the pins.
+[I2S](https://www.arduino.cc/en/Reference/I2S) is method of digitally transferring audio data between devices. It uses just 3 wires. This is particularly useful in transferring data to an external high performance Digital to Analog Converter (DAC). For instance most ESP32s have 2 8-bit DACs whereas music is usually played over 16-bit DACs (or better). However, you can get cheap 16 bit DACs that you can plug into your speakers/Hi-Fi systems. These DACs receive data from your microcontroller using I2S. The one I have been using is the Adafruit [I2S Stereo decoder](https://www.adafruit.com/product/3678). Not all microcontrollers have I2S communication and Bluetooth Classic/ WIFI. This is why the ESP32 boards are key here. They have both. A simple bit of code to combine both the bluetooth and the I2S is given below. The only difference between this code and the advertising code is calling the `btAudio::I2S` method and specifying the 3 pins that you want to use. A cool feature about ESP32s is that you usually pick whatever pins to do whatever action you want. So feel free to change the pins.
 
 ```cpp
 #include <btAudio.h>
@@ -149,7 +149,7 @@ void loop() {
 <a name="d"></a>
 ## Changing Volume
 This section covers the [changeVolume](examples/changeVolume/changeVolume.ino) example.
-Volume is a tricky issue. Ideally, the sender should issue a  request for volume to be changed at the receiver (using something like [AVRCP](https://en.wikipedia.org/wiki/List_of_Bluetooth_profiles#Audio/Video_Remote_Control_Profile_(AVRCP))). The sender should not change the data before it is transmitted. My MP3 player does not change the data before transmission. My laptop and phone do. One option is to digitally alter the data before it goes to the DAC but after it has been received by the ESP32. We can do this by using the `btAudio::volume` method. It accepts one argument: a floating point number between 0 and 1. It then scales the data by that number. 
+Volume is a tricky issue. Ideally, the sender should issue a request for volume to be changed at the receiver (using something like [AVRCP](https://en.wikipedia.org/wiki/List_of_Bluetooth_profiles#Audio/Video_Remote_Control_Profile_(AVRCP))). The sender should not change the data before it is transmitted. My MP3 player does not change the data before transmission. My laptop and phone do. One option is to digitally alter the data before it goes to the DAC but after it has been received by the ESP32. We can do this by using the `btAudio::volume` method. It accepts one argument: a floating point number between 0 and 1. It then scales the data by that number. 
 
 ```cpp
 #include <btAudio.h>
@@ -179,7 +179,7 @@ audio.volume(1.0);
 <a name="e"></a>
 ## Serial Control
 This section covers the [serialControl](examples/serialControl/serialControl.ino) example.
-If you want to control any of the features proposed here you may need to create a hardware interface (buttons, potentiometers, etc). In the meantime I've created a serial interface for you to play with.  It's pretty simple and not necessarily the best method but it works. The idea is to send a string to over the comm port (e.g. `vol`). Follow this string with a terminator(e.g. `#`) and then follow this with a number (e.g. `0.42`). So the full comand to cut the volume by half would be `vol#0.5`. In the image below you can see waht this looks like in hte serial monitor.
+If you want to control any of the features proposed here you may need to create a hardware interface (buttons, potentiometers, etc). In the meantime I've created a serial interface for you to play with. It's pretty simple and not necessarily the best method but it works. The idea is to send a string to over the comm port (e.g. `vol`). Follow this string with a terminator(e.g. `#`) and then follow this with a number (e.g. `0.42`). So the full command to cut the volume by half would be `vol#0.5`. In the image below you can see waht this looks like in hte serial monitor.
 
 <p align="center">
   <img src="readme/serial.PNG" width="600" />
@@ -223,7 +223,7 @@ void loop() {
 ## High-Pass Filtering
 This section covers the [highpassFilter](examples/highpassFilter/highpassFilter.ino) example.
 High-Pass filters remove low frequency content from your data. You can either set the parameters in the `void setup()` section or you can interactively edit the parameters via the serial interface. The method is `btAudio::createFilter`. The implementation uses a cascade of [biquad filters](https://www.earlevel.com/main/2012/11/26/biquad-c-source-code/).
-The method takes three arguments. The first specfies the number of filter cascades. A higher number makes the filter sharper but increases the run-time of the method. For me a value of 3 is a good compromise between computation time and filter efficacy. The second argument is the filter cutoff. Below this frequency the  signal starts to get suppressed. The third argument is the filter type. setting the value to `highpass` makes the filter a high-pass filter. Calling the `stopFilter()` method stops the effects of the filter(send command `stopFilt#`). Experiment with a few values for your high pass cut off. Most speakers struggle to produce sound below 100Hz so sending the command `hp#100` should only make a very small difference to your listening. Send the command `hp#600` and you will notice a very big difference! The sound will sound like it's coming through a very old phone...
+The method takes three arguments. The first specifies the number of filter cascades. A higher number makes the filter sharper but increases the run-time of the method. For me a value of 3 is a good compromise between computation time and filter efficacy. The second argument is the filter cutoff. Below this frequency the signal starts to get suppressed. The third argument is the filter type. Setting the value to `highpass` makes the filter a high-pass filter. Calling the `stopFilter()` method stops the effects of the filter(send command `stopFilt#`). Experiment with a few values for your high pass cut off. Most speakers struggle to produce sound below 100Hz so sending the command `hp#100` should only make a very small difference to your listening. Send the command `hp#600` and you will notice a very big difference! The sound will sound like it's coming through a very old phone...
 ```cpp
 #include <btAudio.h>
 
@@ -308,10 +308,10 @@ void loop() {
 ```
 <a name="h"></a>
 ## Dynamic Range Compression
-I'll highlight terms throughout this section that will be paramters for the [Dynamic range compression(DRC)](https://en.wikipedia.org/wiki/Dynamic_range_compression). DRC is a method that evens out the sound of audio.  It compresses loud sounds to the level of quiet ones and then, optionally, amplifies(`gain`) both. The result is a more even audio experience. It is nonlinear and has many, many settings. It is both compicated to implement and to use. Consider this feature experimental. There are two main types of compression: Hard Knee and Soft Knee. Basically, once the audio reaches a certain `threshold` it starts to be compressed by a certain `Ratio`. Hard knee compressors start compressing immediately at the `threshold` but Soft knee compressors start compressing sooner and in a more smooth fashion. Supposedly, this leads to a more natural sound but it is far more computationaly intensive to implement.   
+I'll highlight terms throughout this section that will be parameters for the [Dynamic range compression(DRC)](https://en.wikipedia.org/wiki/Dynamic_range_compression). DRC is a method that evens out the sound of audio.  It compresses loud sounds to the level of quiet ones and then, optionally, amplifies(`gain`) both. The result is a more even audio experience. It is nonlinear and has many, many settings. It is both complicated to implement and to use. Consider this feature experimental. There are two main types of compression: Hard Knee and Soft Knee. Basically, once the audio reaches a certain `threshold` it starts to be compressed by a certain `Ratio`. Hard knee compressors start compressing immediately at the `threshold` but Soft knee compressors start compressing sooner and in a more smooth fashion. Supposedly, this leads to a more natural sound but it is far more computationaly intensive to implement.   
 <a title="Iainf / Public domain" href="https://commons.wikimedia.org/wiki/File:Compression_knee.svg"><img width="600" alt="Compression knee" src="https://upload.wikimedia.org/wikipedia/commons/3/3e/Compression_knee.svg"></a>
 
-You can also specify the `width` of this soft knee (i.e. How gradual you want the compression to be). Setting this `width` to zero implements a hard knee. You can alsoe set `attack` and `release` times. These are time constants that determin how quickly the compressor starts working. For instance if there was a sudden change in volume you might want to have a very quick `attack` time so as to compress that signal quickly. Having a long `release` time will leave the compressor running for a brief time after it has started compressing. I've got two examples on how to use the compressor. One has extreme parameters that you can just turn on or off and another with full serial control over all the parameters. 
+You can also specify the `width` of this soft knee (i.e. How gradual you want the compression to be). Setting this `width` to zero implements a hard knee. You can also set `attack` and `release` times. These are time constants that determine how quickly the compressor starts working. For instance if there was a sudden change in volume you might want to have a very quick `attack` time so as to compress that signal quickly. Having a long `release` time will leave the compressor running for a brief time after it has started compressing. I've got two examples on how to use the compressor. One has extreme parameters that you can just turn on or off and another with full serial control over all the parameters. 
 
 
 <a name="h1"></a>
@@ -442,9 +442,9 @@ void loop() {
 ```
 <a name="h3"></a>
 ## Approximate Dynamic Range Compression
-Dynamic Range Compression is very computationaly expensive. I found for my esp32 the big stress was converting the computed gain (dB) back to a 16 bit integer. This required computing `pow10f(x/20)` which became a severe bottlekneck. This operation took takes about 5 microseconds to compute. For a stereo system that's 10 microseconds. Considering there is only 11.3 microseconds between stereo samples using 10 microseconds for one line of code is abhorrent. 
+Dynamic Range Compression is very computationaly expensive. I found for my esp32 the big stress was converting the computed gain (dB) back to a 16 bit integer. This required computing `pow10f(x/20)` which became a severe bottleneck. This operation took takes about 5 microseconds to compute. For a stereo system that's 10 microseconds. Considering there is only 11.3 microseconds between stereo samples using 10 microseconds for one line of code is abhorrent. 
 <br>
-I thought about precomputing the values and creating a lookup table but that would require > 130KB of memory. That would not be the polite thing to do. Program storage space is valuable, particularly as the ESP32 uses a lot of memory for WIFI and Bluetooth. The compromise was to use a lookup table for integral part of `x` and a polynomial apprxomation for the fractional part of `x`. As `x` only ranges between -90dB and 90dB for signed 16 bit integers we can create a look up table for the integral part using less than 400 bytes. For the fractional part we use [Newton's Divided Difference](https://en.wikipedia.org/wiki/Newton_polynomial) method for polynomial interpolation between the integer parts. Long story short this method has an accuracy of 0.01% and runs in 0.2 microseconds.  If you just use the intger lookup method the error is greater than 10% and takes 0.1 microseconds. In my opinion the extra 0.1 microseconds is worth the 1000 fold increase in accuracy. The code below is covered in the [benchLookup](examples/benchLookup/benchLookup.ino) example. This example isn't crucial but useful if you want to see the difference in methodologies.
+I thought about precomputing the values and creating a lookup table but that would require > 130KB of memory. That would not be the polite thing to do. Program storage space is valuable, particularly as the ESP32 uses a lot of memory for WIFI and Bluetooth. The compromise was to use a lookup table for integral part of `x` and a polynomial approximation for the fractional part of `x`. As `x` only ranges between -90dB and 90dB for signed 16 bit integers we can create a lookup table for the integral part using less than 400 bytes. For the fractional part we use [Newton's Divided Difference](https://en.wikipedia.org/wiki/Newton_polynomial) method for polynomial interpolation between the integer parts. Long story short this method has an accuracy of 0.01% and runs in 0.2 microseconds.  If you just use the integer lookup method the error is greater than 10% and takes 0.1 microseconds. In my opinion the extra 0.1 microseconds is worth the 1000 fold increase in accuracy. The code below is covered in the [benchLookup](examples/benchLookup/benchLookup.ino) example. This example isn't crucial but useful if you want to see the difference in methodologies.
 
 ```cpp
 void setup() {
@@ -559,7 +559,7 @@ If you run the above code you should get results like this on the serial monitor
 <a name="i"></a>
 ## Wifi interface
 This section covers the [webInterface example](examples/webInterface/webInterface.ino)
-The serial interface is useful for debugging but not very useful if you have the esp32 hooked up behind a speaker. To edit the DSP paramters wirelessly i've created a very simple webserver that you can access via any browser connected to the same network as the ESP32. It's pretty straightforward to use. Simply create a `webDSP` object and pass it your SSID, internet password and the `btAudio` object.
+The serial interface is useful for debugging but not very useful if you have the esp32 hooked up behind a speaker. To edit the DSP parameters wirelessly I've created a very simple web server that you can access via any browser connected to the same network as the ESP32. It's pretty straightforward to use. Simply create a `webDSP` object and pass it your SSID, internet password and the `btAudio` object.
 
 ```cpp
 #include<webDSP.h>
@@ -602,7 +602,7 @@ void loop() {
   <img src="readme/webpage.PNG" width="600" />
 </p> 
 
-You can expand each of the three sections and edit any of the paramters of the filters, volume or dynamic range compression. 
+You can expand each of the three sections and edit any of the parameters of the filters, volume or dynamic range compression. 
 
 
 
