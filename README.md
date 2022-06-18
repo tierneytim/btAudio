@@ -1,5 +1,5 @@
 # Bluetooth Audio for Arduino
-The code exposes the A2DP profile(Bluetooth Audio) available in ESP32 boards using the arduino interface. It assumes you have installed the [ESP32 core](https://github.com/espressif/arduino-esp32) for arduino and have an ESP32 board. I quite like the [TinyPico](https://www.tinypico.com/) because it's so powerful and so tiny! I also like the [ESP32-PICO-KIT](https://www.mouser.co.uk/ProductDetail/Espressif-Systems/ESP32-PICO-KIT?qs=MLItCLRbWsyoLrlknFRqcQ%3D%3D&vip=1&gclid=EAIaIQobChMImN2EgKTG6QIVWbvVCh0zcAPBEAQYASABEgK0kfD_BwE) because it's so powerful and cheap. Both have the same chips (i think) but the TinyPico is way smaller. 
+The code exposes the A2DP profile (Bluetooth Audio) available in ESP32 boards using the Arduino interface. It assumes you have installed the [ESP32 core](https://github.com/espressif/arduino-esp32) for Arduino and have an ESP32 board. I quite like the [TinyPico](https://www.tinypico.com/) because it's so powerful and so tiny! I also like the [ESP32-PICO-KIT](https://www.mouser.co.uk/ProductDetail/Espressif-Systems/ESP32-PICO-KIT?qs=MLItCLRbWsyoLrlknFRqcQ%3D%3D&vip=1&gclid=EAIaIQobChMImN2EgKTG6QIVWbvVCh0zcAPBEAQYASABEgK0kfD_BwE) because it's so powerful and cheap. Both have the same chips (i think) but the TinyPico is way smaller. 
 
 
 ## Table of contents
@@ -25,16 +25,16 @@ The code exposes the A2DP profile(Bluetooth Audio) available in ESP32 boards usi
 <a name="a"></a>
 ## Installation
 1. [Install the arduino IDE](https://www.arduino.cc/en/main/software)
-2. [Install the esp32 core for arduino](https://github.com/espressif/arduino-esp32/blob/master/docs/arduino-ide/boards_manager.md)
-3. Download this repository.
+2. [Install the esp32 core for arduino](https://docs.espressif.com/projects/arduino-esp32/en/latest/installing.html)
+3. [Download this repository](https://github.com/tierneytim/btAudio/archive/refs/heads/master.zip)
 <p align="center">
   <img src="readme/download.png" width="600" />
 </p>
- 4. Within the arduino IDE under Sketch>>Include Library>> select "Add .ZIP library". Then select the downloaded zip file. 
+ 4. Within the Arduino IDE, select "Sketch" -> "Include Library" -> "Add .ZIP library", then select the downloaded zip file. 
 <p align="center">
   <img src="readme/includeLibrary.png" width="450" />
 </p>
-This should add the library. To use the library you'll have to include the relevant header in the arduino sketch. You'll see this in the following sketches
+This should add the library. To use the library, you'll have to include the relevant header in the arduino sketch. You'll see this in the following sketches.
 
 <a name="b"></a>
 ## Advertising the Connection
