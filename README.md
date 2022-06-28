@@ -62,7 +62,7 @@ void loop() {
 }
 ```
 
-Yay, now you can connect to your esp32 board and stream audio to it.  You can connect with your phone, laptop, MP3 player, whatever you want. Sadly, this data is stuck on the ESP32 unless you have a DAC (Digital to Analogue Converter) that can actually send the audio somewhere (speaker, Hi-Fi system). I'll cover that in the next section. Anywho the whole script is below.
+Yay, now you can connect to your ESP32 board and stream audio to it.  You can connect with your phone, laptop, MP3 player, whatever you want. Sadly, this data is stuck on the ESP32 unless you have a DAC (Digital to Analogue Converter) that can actually send the audio somewhere (speaker, Hi-Fi system). I'll cover that in the next section. Anywho the whole script is below.
 
 ```cpp
 #include <btAudio.h>
@@ -81,6 +81,9 @@ void loop() {
 
 }
 ```
+
+Note that btAudio will remember and attempt to automatically connect to the last connected source device when `audio.begin()` is first called.  Also, if you need, you can manually disconnect or re-connect to the source device using the `audio.disconnect()` and `audio.reconnect()` functions.
+
 <a name="c"></a>
 ## Simple Audio
 This section covers the [minimalAudio](examples/minimalAudio/minimalAudio.ino) example.
