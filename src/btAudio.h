@@ -27,6 +27,8 @@ class btAudio {
 	// Bluetooth functionality
 	void begin();  
 	void end();
+	void disconnect();
+	void reconnect();
 	void setSinkCallback(void (*sinkCallback)(const uint8_t *data, uint32_t len));
 	
 	// I2S Audio
