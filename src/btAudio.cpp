@@ -59,7 +59,16 @@ void btAudio::begin() {
 #else
   esp_bt_gap_set_scan_mode(ESP_BT_SCAN_MODE_CONNECTABLE_DISCOVERABLE);
 #endif
-  
+}
+
+void btAudio::end() {
+  esp_a2d_sink_deinit();
+  esp_bluedroid_disable();
+  esp_bluedroid_deinit();
+  btStop();
+}
+
+void btAudio::reconnect() {
   // Load rememebered device address from flash
   preferences.begin("btAudio", false);
   _address[0] = preferences.getUChar("btaddr0", 0);
@@ -84,19 +93,8 @@ void btAudio::begin() {
   }
 }
 
-void btAudio::end() {
-  esp_a2d_sink_deinit();
-  esp_bluedroid_disable();
-  esp_bluedroid_deinit();
-  btStop();
-}
-
 void btAudio::disconnect() {
   esp_a2d_sink_disconnect(_address);
-}
-
-void btAudio::reconnect() {
-  esp_a2d_sink_connect(_address);
 }
 
 void btAudio::a2d_cb(esp_a2d_cb_event_t event, esp_a2d_cb_param_t*param){
@@ -112,7 +110,7 @@ void btAudio::a2d_cb(esp_a2d_cb_event_t event, esp_a2d_cb_param_t*param){
 		    _address[4]= *(temp+4); _address[5]= *(temp+5);
             ESP_LOGI("btAudio", "Connected to BT device: %d %d %d %d %d %d", _address[0], _address[1], _address[2], _address[3], _address[4], _address[5]);
 
-		    // Store connected BT address to auto-connect on next init 
+		    // Store connected BT address for use by reconnect()
 		    preferences.begin("btAudio", false);
             if (preferences.getUChar("btaddr0", 0) != _address[0]) { preferences.putUChar("btaddr0", _address[0]); ESP_LOGI("btAudio", "Writing BTaddr0"); }
             if (preferences.getUChar("btaddr1", 0) != _address[1]) { preferences.putUChar("btaddr1", _address[1]); ESP_LOGI("btAudio", "Writing BTaddr1"); }
