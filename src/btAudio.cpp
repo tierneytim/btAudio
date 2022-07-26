@@ -1,9 +1,10 @@
 #include "btAudio.h"
+#include <Preferences.h> // For saving audio source BT addr for auto-reconnect
 ////////////////////////////////////////////////////////////////////
 ////////////// Nasty statics for i2sCallback ///////////////////////
 ////////////////////////////////////////////////////////////////////
  float btAudio::_vol=0.95;
- uint8_t btAudio::_address[6];
+ esp_bd_addr_t btAudio::_address;
  int32_t btAudio::_sampleRate=44100;
   
  String btAudio::title="";
@@ -18,6 +19,8 @@
  filter btAudio::_filtRlp = filter(20000,_sampleRate,3,lowpass);  
  DRC btAudio::_DRCL = DRC(_sampleRate,60.0,0.001,0.2,4.0,10.0,0.0); 
  DRC btAudio::_DRCR = DRC(_sampleRate,60.0,0.001,0.2,4.0,10.0,0.0); 
+ 
+ Preferences preferences;
 
 ////////////////////////////////////////////////////////////////////
 ////////////////////////// Constructor /////////////////////////////
@@ -34,10 +37,10 @@ void btAudio::begin() {
   //Arduino bluetooth initialisation
   btStart();
 
-  // bluedroid  allows for bluetooth classic
+  // bluedroid allows for bluetooth classic
   esp_bluedroid_init();
   esp_bluedroid_enable();
-   
+  
   //set up device name
   esp_bt_dev_set_device_name(_devName);
   
@@ -56,30 +59,71 @@ void btAudio::begin() {
 #else
   esp_bt_gap_set_scan_mode(ESP_BT_SCAN_MODE_CONNECTABLE_DISCOVERABLE);
 #endif
-
 }
+
 void btAudio::end() {
   esp_a2d_sink_deinit();
   esp_bluedroid_disable();
   esp_bluedroid_deinit();
-  btStop();  
+  btStop();
 }
+
+void btAudio::reconnect() {
+  // Load rememebered device address from flash
+  preferences.begin("btAudio", false);
+  _address[0] = preferences.getUChar("btaddr0", 0);
+  _address[1] = preferences.getUChar("btaddr1", 0);
+  _address[2] = preferences.getUChar("btaddr2", 0);
+  _address[3] = preferences.getUChar("btaddr3", 0);
+  _address[4] = preferences.getUChar("btaddr4", 0);
+  _address[5] = preferences.getUChar("btaddr5", 0);
+  preferences.end();
+  
+  // Only attempt connection if address exists
+  if (_address[0] + _address[1] +
+      _address[2] + _address[3] +
+      _address[4] + _address[5] != 0)
+  {
+    ESP_LOGI("btAudio", "Connecting to remembered BT device: %d %d %d %d %d %d", 
+            _address[0], _address[1],
+            _address[2], _address[3],
+            _address[4], _address[5]);
+    // Connect to remembered device
+    esp_a2d_sink_connect(_address);
+  }
+}
+
+void btAudio::disconnect() {
+  esp_a2d_sink_disconnect(_address);
+}
+
 void btAudio::a2d_cb(esp_a2d_cb_event_t event, esp_a2d_cb_param_t*param){
 	esp_a2d_cb_param_t *a2d = (esp_a2d_cb_param_t *)(param);
 	switch (event) {
-    case ESP_A2D_CONNECTION_STATE_EVT:{
-        
+    case ESP_A2D_CONNECTION_STATE_EVT:
+    {
         uint8_t* temp= a2d->conn_stat.remote_bda;
-        _address[0]= *temp;
-		_address[1]= *(temp+1);
-		_address[2]= *(temp+2);
-		_address[3]= *(temp+3);
-		_address[4]= *(temp+4);
-		_address[5]= *(temp+5);    
-        break;
+        if (a2d->conn_stat.state == ESP_A2D_CONNECTION_STATE_CONNECTED)
+        {
+            _address[0]= *temp;     _address[1]= *(temp+1);
+		    _address[2]= *(temp+2); _address[3]= *(temp+3);
+		    _address[4]= *(temp+4); _address[5]= *(temp+5);
+            ESP_LOGI("btAudio", "Connected to BT device: %d %d %d %d %d %d", _address[0], _address[1], _address[2], _address[3], _address[4], _address[5]);
+
+		    // Store connected BT address for use by reconnect()
+		    preferences.begin("btAudio", false);
+            if (preferences.getUChar("btaddr0", 0) != _address[0]) { preferences.putUChar("btaddr0", _address[0]); ESP_LOGI("btAudio", "Writing BTaddr0"); }
+            if (preferences.getUChar("btaddr1", 0) != _address[1]) { preferences.putUChar("btaddr1", _address[1]); ESP_LOGI("btAudio", "Writing BTaddr1"); }
+            if (preferences.getUChar("btaddr2", 0) != _address[2]) { preferences.putUChar("btaddr2", _address[2]); ESP_LOGI("btAudio", "Writing BTaddr2"); }
+            if (preferences.getUChar("btaddr3", 0) != _address[3]) { preferences.putUChar("btaddr3", _address[3]); ESP_LOGI("btAudio", "Writing BTaddr3"); }
+            if (preferences.getUChar("btaddr4", 0) != _address[4]) { preferences.putUChar("btaddr4", _address[4]); ESP_LOGI("btAudio", "Writing BTaddr4"); }
+            if (preferences.getUChar("btaddr5", 0) != _address[5]) { preferences.putUChar("btaddr5", _address[5]); ESP_LOGI("btAudio", "Writing BTaddr5"); }
+            preferences.end();
+            break;
+        }
     }
 	case ESP_A2D_AUDIO_CFG_EVT: {
-        ESP_LOGI(BT_AV_TAG, "A2DP audio stream configuration, codec type %d", a2d->audio_cfg.mcc.type);
+        ESP_LOGI("BT_AV", "A2DP audio stream configuration, codec type %d", a2d->audio_cfg.mcc.type);
         // for now only SBC stream is supported
         if (a2d->audio_cfg.mcc.type == ESP_A2D_MCT_SBC) {
             _sampleRate = 16000;
@@ -91,13 +135,13 @@ void btAudio::a2d_cb(esp_a2d_cb_event_t event, esp_a2d_cb_param_t*param){
             } else if (oct0 & (0x01 << 4)) {
                 _sampleRate = 48000;
             }
-            ESP_LOGI(BT_AV_TAG, "Configure audio player %x-%x-%x-%x",
+            ESP_LOGI("BT_AV", "Configure audio player %x-%x-%x-%x",
                      a2d->audio_cfg.mcc.cie.sbc[0],
                      a2d->audio_cfg.mcc.cie.sbc[1],
                      a2d->audio_cfg.mcc.cie.sbc[2],
                      a2d->audio_cfg.mcc.cie.sbc[3]);
 					 if(i2s_set_sample_rates(I2S_NUM_0, _sampleRate)==ESP_OK){
-						ESP_LOGI(BT_AV_TAG, "Audio player configured, sample rate=%d", _sampleRate);
+						ESP_LOGI("BT_AV", "Audio player configured, sample rate=%d", _sampleRate);
 					 }
 		}
 		
@@ -149,7 +193,7 @@ void btAudio::avrc_callback(esp_avrc_ct_cb_event_t event, esp_avrc_ct_cb_param_t
       free(attr_text);
   }break;
     default:
-      ESP_LOGE(BT_RC_CT_TAG, "unhandled AVRC event: %d", event);
+      ESP_LOGE("RCCT", "unhandled AVRC event: %d", event);
       break;
   }
 }
@@ -337,4 +381,3 @@ void btAudio::decompress(){
 	 _postprocess = 0;
 	}
 }
-

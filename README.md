@@ -17,15 +17,15 @@ The code exposes the A2DP profile (Bluetooth Audio) available in ESP32 boards us
 	1. [DRC: Partial Control](#h1)
 	2. [DRC: Full Control](#h2)
 	3. [DRC: Approximation](#h3)
-9. [Wifi Interface](#i)
+9. [WiFi Interface](#i)
 	
 [Appendix I: Not so simple audio](#app)
 
 
 <a name="a"></a>
 ## Installation
-1. [Install the arduino IDE](https://www.arduino.cc/en/main/software)
-2. [Install the esp32 core for arduino](https://docs.espressif.com/projects/arduino-esp32/en/latest/installing.html)
+1. [Install the Arduino IDE](https://www.arduino.cc/en/main/software)
+2. [Install the ESP32 core for Arduino](https://docs.espressif.com/projects/arduino-esp32/en/latest/installing.html)
 3. [Download this repository](https://github.com/tierneytim/btAudio/archive/refs/heads/master.zip)
 <p align="center">
   <img src="readme/download.png" width="600" />
@@ -34,25 +34,26 @@ The code exposes the A2DP profile (Bluetooth Audio) available in ESP32 boards us
 <p align="center">
   <img src="readme/includeLibrary.png" width="450" />
 </p>
-This should add the library. To use the library, you'll have to include the relevant header in the arduino sketch. You'll see this in the following sketches.
+This should add the library. To use the library, you'll have to include the relevant header in the Arduino sketch. You'll see this in the following sketches.
 
 <a name="b"></a>
 ## Advertising the Connection
 This section covers the [advertiseBluetooth](examples/advertiseBluetooth/advertiseBluetooth.ino) example.
-The first step to getting some bluetooth audio up and running is to advertise your ESP32 board.  You will need to include the btAudio header and declare a `btAudio` object.
+The first step to getting some Bluetooth audio up and running is to advertise your ESP32 board.  You will need to include the btAudio header and declare a `btAudio` object.
+
 ```cpp
 #include <btAudio.h>
 
 // Sets the name of the audio device
 btAudio audio = btAudio("ESP_Speaker");
 ```
-The string that you supply to the `btAudio` object becomes the name of the ESP32 bluetooth connection. However, this only initialises the object. It doesn't actually start the bluetooth. For that you'll need to use the `btAudio::begin` method.
- 
+
+The string that you supply to the `btAudio` object becomes the name of the ESP32 Bluetooth connection. However, this only initialises the object. It doesn't actually start the Bluetooth. For that you'll need to use the `btAudio::begin` method.
  
 ```cpp
 void setup() {
  
- // streams audio data to the ESP32   
+ // Streams audio data to the ESP32   
  audio.begin();
 
 }
@@ -62,7 +63,27 @@ void loop() {
 }
 ```
 
-Yay, now you can connect to your esp32 board and stream audio to it.  You can connect with your phone, laptop, MP3 player, whatever you want. Sadly, this data is stuck on the ESP32 unless you have a DAC (Digital to Analogue Converter) that can actually send the audio somewhere (speaker, Hi-Fi system). I'll cover that in the next section. Anywho the whole script is below.
+Yay, now you can connect to your ESP32 board and stream audio to it.  You can connect with your phone, laptop, MP3 player, whatever you want. Sadly, this data is stuck on the ESP32 unless you have a DAC (Digital to Analogue Converter) that can actually send the audio somewhere (speaker, Hi-Fi system). I'll cover that in the next section.
+
+btAudio can remember and attempt to automatically connect to the last connected source device.  Just call the `audio.reconnect()`  function, and btAudio will connect to the last remembered device.  You can also manually disconnect from the current source device using the `audio.disconnect()` function.
+
+```cpp
+void setup() {
+ 
+ // Streams audio data to the ESP32   
+ audio.begin();
+ 
+ // Re-connects to last connected device
+ audio.reconnect();
+
+}
+
+void loop() {
+
+}
+```
+
+The whole script is below:
 
 ```cpp
 #include <btAudio.h>
@@ -72,8 +93,11 @@ btAudio audio = btAudio("ESP_Speaker");
 
 void setup() {
  
- // streams audio data to the ESP32   
+ // Streams audio data to the ESP32   
  audio.begin();
+ 
+ // Re-connects to last connected device
+ audio.reconnect();
 
 }
 
@@ -81,10 +105,11 @@ void loop() {
 
 }
 ```
+
 <a name="c"></a>
 ## Simple Audio
 This section covers the [minimalAudio](examples/minimalAudio/minimalAudio.ino) example.
-Now that we have mastered the bluetooth component of "Bluetooth Audio" let's turn to the audio part. This requires some extra hardware. I like the adafruit [I2S Stereo decoder](https://www.adafruit.com/product/3678). It takes data from the ESP32 and converts it to a line out signal  which can be plugged into a stereo or Hi-Fi system (instantly adding wireless audio to your audio system). But what is I2S and what extra hardware do you need?
+Now that we have mastered the Bluetooth component of "Bluetooth Audio", let's turn to the audio part. This requires some extra hardware. I like the Adafruit [I2S Stereo decoder](https://www.adafruit.com/product/3678). It takes data from the ESP32 and converts it to a line out signal which can be plugged into a stereo or Hi-Fi system (instantly adding wireless audio to your audio system). But what is I2S and what extra hardware do you need?
 
 <a name="c1"></a>
 ### Hardware: Components
@@ -123,6 +148,8 @@ My setup looks like this.
 ### I2S
 [I2S](https://www.arduino.cc/en/Reference/I2S) is method of digitally transferring audio data between devices. It uses just 3 wires. This is particularly useful in transferring data to an external high performance Digital to Analog Converter (DAC). For instance most ESP32s have 2 8-bit DACs whereas music is usually played over 16-bit DACs (or better). However, you can get cheap 16 bit DACs that you can plug into your speakers/Hi-Fi systems. These DACs receive data from your microcontroller using I2S. The one I have been using is the Adafruit [I2S Stereo decoder](https://www.adafruit.com/product/3678). Not all microcontrollers have I2S communication and Bluetooth Classic/ WIFI. This is why the ESP32 boards are key here. They have both. A simple bit of code to combine both the bluetooth and the I2S is given below. The only difference between this code and the advertising code is calling the `btAudio::I2S` method and specifying the 3 pins that you want to use. A cool feature about ESP32s is that you usually pick whatever pins to do whatever action you want. So feel free to change the pins.
 
+The full contents of the `minimalAudio` example are below.
+
 ```cpp
 #include <btAudio.h>
 
@@ -131,10 +158,13 @@ btAudio audio = btAudio("ESP_Speaker");
 
 void setup() {
  
- // streams audio data to the ESP32   
+ // Streams audio data to the ESP32   
  audio.begin();
  
- //  outputs the received data to an I2S DAC https://www.adafruit.com/product/3678
+ // Re-connects to last connected device
+ audio.reconnect();
+ 
+ // Outputs the received data to an I2S DAC, e.g. https://www.adafruit.com/product/3678
  int bck = 26; 
  int ws = 27;
  int dout = 25;
@@ -158,11 +188,14 @@ Volume is a tricky issue. Ideally, the sender should issue a request for volume 
 btAudio audio = btAudio("ESP_Speaker");
 
 void setup() {
- 
- // streams audio data to the ESP32   
+
+ // Streams audio data to the ESP32   
  audio.begin();
- 
- //  outputs the received data to an I2S DAC https://www.adafruit.com/product/3678
+
+ // Re-connects to last connected device
+ audio.reconnect();
+
+ // Outputs the received data to an I2S DAC, e.g. https://www.adafruit.com/product/3678
  int bck = 26; 
  int ws = 27;
  int dout = 25;
@@ -170,12 +203,13 @@ void setup() {
 }
 
 void loop() {
-delay(3000);
-audio.volume(0.1);
-delay(3000);
-audio.volume(1.0);
+  delay(3000);
+  audio.volume(0.1);
+  delay(3000);
+  audio.volume(1.0);
 }
 ```
+
 <a name="e"></a>
 ## Serial Control
 This section covers the [serialControl](examples/serialControl/serialControl.ino) example.
@@ -185,7 +219,8 @@ If you want to control any of the features proposed here you may need to create 
   <img src="readme/serial.PNG" width="600" />
 </p> 
 
- Once the code in the next section is uploaded try and experiment by opening the serial monitor and changing the volume a bit. This general approach can be adpated for any method. 
+Once the code in the next section is uploaded try and experiment by opening the serial monitor and changing the volume a bit. This general approach can be adapted for any method.
+
 ```cpp
 #include <btAudio.h>
 
@@ -193,12 +228,16 @@ btAudio audio = btAudio("ESP_Speaker");
 String command;
 
 void setup() { 
+ // Streams audio data to the ESP32   
  audio.begin();
+ // Re-connects to last connected device
+ audio.reconnect();
+ // Outputs the received data to an I2S DAC, e.g. https://www.adafruit.com/product/3678
  int bck = 26; 
  int ws = 27;
  int dout = 25;
  audio.I2S(bck, dout, ws);
- // open the serial port
+ // Opens the serial port
  Serial.begin(115200);
 }
 
@@ -224,6 +263,7 @@ void loop() {
 This section covers the [highpassFilter](examples/highpassFilter/highpassFilter.ino) example.
 High-Pass filters remove low frequency content from your data. You can either set the parameters in the `void setup()` section or you can interactively edit the parameters via the serial interface. The method is `btAudio::createFilter`. The implementation uses a cascade of [biquad filters](https://www.earlevel.com/main/2012/11/26/biquad-c-source-code/).
 The method takes three arguments. The first specifies the number of filter cascades. A higher number makes the filter sharper but increases the run-time of the method. For me a value of 3 is a good compromise between computation time and filter efficacy. The second argument is the filter cutoff. Below this frequency the signal starts to get suppressed. The third argument is the filter type. Setting the value to `highpass` makes the filter a high-pass filter. Calling the `stopFilter()` method stops the effects of the filter(send command `stopFilt#`). Experiment with a few values for your high pass cut off. Most speakers struggle to produce sound below 100Hz so sending the command `hp#100` should only make a very small difference to your listening. Send the command `hp#600` and you will notice a very big difference! The sound will sound like it's coming through a very old phone...
+
 ```cpp
 #include <btAudio.h>
 
@@ -231,14 +271,18 @@ btAudio audio = btAudio("ESP_Speaker");
 String command;
 
 void setup() { 
+ // Streams audio data to the ESP32   
  audio.begin();
+ // Re-connects to last connected device
+ audio.reconnect();
+ // Outputs the received data to an I2S DAC, e.g. https://www.adafruit.com/product/3678
  int bck = 26; 
  int ws = 27;
  int dout = 25;
  audio.I2S(bck, dout, ws);
+ // Opens the serial port
  Serial.begin(115200);
 }
-
 
 int fo=3;
 float fc=30;
@@ -258,7 +302,6 @@ void loop() {
   }   
  }
 }
-
 ```
 
 <a name="g"></a>
@@ -272,14 +315,18 @@ btAudio audio = btAudio("ESP_Speaker");
 String command;
 
 void setup() { 
+ // Streams audio data to the ESP32   
  audio.begin();
+ // Re-connects to last connected device
+ audio.reconnect();
+ // Outputs the received data to an I2S DAC, e.g. https://www.adafruit.com/product/3678
  int bck = 26; 
  int ws = 27;
  int dout = 25;
  audio.I2S(bck, dout, ws);
+ // Opens the serial port
  Serial.begin(115200);
 }
-
 
 int fo=3;
 float fc;
@@ -304,7 +351,6 @@ void loop() {
   }  
  }
 }
-
 ```
 <a name="h"></a>
 ## Dynamic Range Compression
@@ -313,11 +359,10 @@ I'll highlight terms throughout this section that will be parameters for the [Dy
 
 You can also specify the `width` of this soft knee (i.e. How gradual you want the compression to be). Setting this `width` to zero implements a hard knee. You can also set `attack` and `release` times. These are time constants that determine how quickly the compressor starts working. For instance if there was a sudden change in volume you might want to have a very quick `attack` time so as to compress that signal quickly. Having a long `release` time will leave the compressor running for a brief time after it has started compressing. I've got two examples on how to use the compressor. One has extreme parameters that you can just turn on or off and another with full serial control over all the parameters. 
 
-
 <a name="h1"></a>
 ### DRC: Partial Control
 This section covers the [partialDRC](examples/partialDRC/partialDRC.ino) example. 
-For turning the compressor on and off just send the `compress#` and `decompress#` commands over the serial port. This will call the `btAudio::compress` method and the `btAudio::decompress` method. Hopefully, you should hear a clear difference between compressed and uncompressed data. It can be quite useful for making sure audio will never clip a set of speakers and for watching tv shows that have very loud background music and very low vocals. I'm looking at you xxxxxxx! 
+For turning the compressor on and off just send the `compress#` and `decompress#` commands over the serial port. This will call the `btAudio::compress` method and the `btAudio::decompress` method. Hopefully, you should hear a clear difference between compressed and uncompressed data. It can be quite useful for making sure audio will never clip a set of speakers and for watching TV shows that have very loud background music and very low vocals. I'm looking at you xxxxxxx! 
 ```cpp
 #include <btAudio.h>
 
@@ -325,13 +370,17 @@ btAudio audio = btAudio("ESP_Speaker");
 String command;
 
 void setup() { 
+ // Streams audio data to the ESP32   
  audio.begin();
+ // Re-connects to last connected device
+ audio.reconnect();
+ // Outputs the received data to an I2S DAC, e.g. https://www.adafruit.com/product/3678
  int bck = 26; 
  int ws = 27;
  int dout = 25;
  audio.I2S(bck, dout, ws);
+ // Opens the serial port
  Serial.begin(115200);
- 
 }
 
 float thresh=30;
@@ -378,11 +427,16 @@ btAudio audio = btAudio("ESP_Speaker");
 String command;
 
 void setup() { 
+ // Streams audio data to the ESP32   
  audio.begin();
+ // Re-connects to last connected device
+ audio.reconnect();
+ // Outputs the received data to an I2S DAC, e.g. https://www.adafruit.com/product/3678
  int bck = 26; 
  int ws = 27;
  int dout = 25;
  audio.I2S(bck, dout, ws);
+ // Opens the serial port
  Serial.begin(115200);
 }
 
@@ -438,11 +492,10 @@ void loop() {
    }
   }
 }
-
 ```
 <a name="h3"></a>
 ## Approximate Dynamic Range Compression
-Dynamic Range Compression is very computationaly expensive. I found for my esp32 the big stress was converting the computed gain (dB) back to a 16 bit integer. This required computing `pow10f(x/20)` which became a severe bottleneck. This operation took takes about 5 microseconds to compute. For a stereo system that's 10 microseconds. Considering there is only 11.3 microseconds between stereo samples using 10 microseconds for one line of code is abhorrent. 
+Dynamic Range Compression is very computationally expensive. I found for my ESP32 the big stress was converting the computed gain (dB) back to a 16 bit integer. This required computing `pow10f(x/20)` which became a severe bottleneck. This operation took takes about 5 microseconds to compute. For a stereo system that's 10 microseconds. Considering there is only 11.3 microseconds between stereo samples using 10 microseconds for one line of code is abhorrent. 
 <br>
 I thought about precomputing the values and creating a lookup table but that would require > 130KB of memory. That would not be the polite thing to do. Program storage space is valuable, particularly as the ESP32 uses a lot of memory for WIFI and Bluetooth. The compromise was to use a lookup table for integral part of `x` and a polynomial approximation for the fractional part of `x`. As `x` only ranges between -90dB and 90dB for signed 16 bit integers we can create a lookup table for the integral part using less than 400 bytes. For the fractional part we use [Newton's Divided Difference](https://en.wikipedia.org/wiki/Newton_polynomial) method for polynomial interpolation between the integer parts. Long story short this method has an accuracy of 0.01% and runs in 0.2 microseconds.  If you just use the integer lookup method the error is greater than 10% and takes 0.1 microseconds. In my opinion the extra 0.1 microseconds is worth the 1000 fold increase in accuracy. The code below is covered in the [benchLookup](examples/benchLookup/benchLookup.ino) example. This example isn't crucial but useful if you want to see the difference in methodologies.
 
@@ -557,9 +610,9 @@ If you run the above code you should get results like this on the serial monitor
 </p> 
 
 <a name="i"></a>
-## Wifi interface
+## WiFi interface
 This section covers the [webInterface example](examples/webInterface/webInterface.ino)
-The serial interface is useful for debugging but not very useful if you have the esp32 hooked up behind a speaker. To edit the DSP parameters wirelessly I've created a very simple web server that you can access via any browser connected to the same network as the ESP32. It's pretty straightforward to use. Simply create a `webDSP` object and pass it your SSID, internet password and the `btAudio` object.
+The serial interface is useful for debugging but not very useful if you have the ESP32 hooked up behind a speaker. To edit the DSP parameters wirelessly I've created a very simple web server that you can access via any browser connected to the same network as the ESP32. It's pretty straightforward to use. Simply create a `webDSP` object and pass it your SSID, password, and the `btAudio` object.
 
 ```cpp
 #include<webDSP.h>
@@ -572,31 +625,31 @@ btAudio audio = btAudio("ESP_Speaker");
 webDSP web;
 
 void setup() {
-  Serial.begin(115200);  
+ // Streams audio data to the ESP32   
+ audio.begin();
+ // Re-connects to last connected device
+ audio.reconnect();
+ // Outputs the received data to an I2S DAC, e.g. https://www.adafruit.com/product/3678
+ int bck = 26; 
+ int ws = 27;
+ int dout = 25;
+ audio.I2S(bck, dout, ws);
+ // Opens the serial port
+ Serial.begin(115200);
   
-  //start streaming audio
-  audio.begin();
-  
-  //transmit data to DAC
-  int bck = 26; 
-  int ws = 27;
-  int dout = 25;  
-  audio.I2S(bck, dout, ws);
-  
-  // replace ssid and password with your details
-  const char* ssid = "";
-  const char* password = "";
-  web.begin(ssid,password ,&audio); 
+ // Replace ssid and password with your details
+ const char* ssid = "";
+ const char* password = "";
+ web.begin(ssid, password, &audio); 
 }
 
 void loop() {
   // continually check on client 
   web._server.handleClient();
 }
-
 ```
 
- The first time you run this bit of code you should have the serial monitor open so that you can see what the IP address assigned to your ESP32 is. Once you know this number simply enter it in to your browser and you'll be greeted by this webpage!
+The first time you run this bit of code, you should have the serial monitor open so that you can see what the IP address assigned to your ESP32 is. Once you know this number, simply enter it in to your browser and you'll be greeted by this webpage!
 
 <p align="center">
   <img src="readme/webpage.PNG" width="600" />
@@ -604,15 +657,13 @@ void loop() {
 
 You can expand each of the three sections and edit any of the parameters of the filters, volume or dynamic range compression. 
 
-
-
 <a name="app"></a>
 ## Not so simple audio
 What if [you hate classes/Object Oriented Programming](https://medium.com/better-programming/object-oriented-programming-the-trillion-dollar-disaster-92a4b666c7c7 ) and don't want to use my code but still want Bluetooth audio. Well this section covers just how to do that with the [underTheHood](examples/underTheHood/underTheHood.ino) example. It uses the minimum amount of ESP32 code to get audio output on I2S. I ain't gonna explain this. The reason I wrote the library is so that I wouldn't have to explain low level ESP32 code. However, for developers it may be easier to work with the raw ESP32 code as you can see the all the moving parts and dependencies more easily. However, for an end user(not a developer) I think a class based approach that hides these details is the way to go. Whatever your thoughts, I think I'm unlikely to shift from the object-oriented programming to more functional programming for this library. 
 
 On a technical note this code adapts the [ESP-IDF A2DP Sink](https://github.com/espressif/esp-idf/blob/master/examples/bluetooth/bluedroid/classic_bt/a2dp_sink/main/main.c
-) example but uses the [arduino-esp32 library](https://github.com/espressif/arduino-esp32) . There are very subtle differences between these libraries. So this example will only work with the arduino library, not the ESP-IDF library. You'll need to use the much more complicated [ESP-IDF example](https://github.com/espressif/esp-idf/blob/master/examples/bluetooth/bluedroid/classic_bt/a2dp_sink/main/main.c
-) if you work outside the arduino environment. 
+) example but uses the [arduino-esp32 library](https://github.com/espressif/arduino-esp32) . There are very subtle differences between these libraries. So this example will only work with the Arduino library, not the ESP-IDF library. You'll need to use the much more complicated [ESP-IDF example](https://github.com/espressif/esp-idf/blob/master/examples/bluetooth/bluedroid/classic_bt/a2dp_sink/main/main.c
+) if you work outside the Arduino environment. 
 
 ```cpp
 // cricial audio bits taken from https://github.com/espressif/esp-idf/blob/master/examples/bluetooth/bluedroid/classic_bt/a2dp_sink/main/main.c
