@@ -205,9 +205,10 @@ void btAudio::setSinkCallback(void (*sinkCallback)(const uint8_t *data, uint32_t
 ////////////////////////////////////////////////////////////////////
 void btAudio::I2S(int bck, int dout, int ws) {
    // i2s configuration
+   uint32_t usamplerate = (uint32_t)_sampleRate;
   static const i2s_config_t i2s_config = {
     .mode = static_cast<i2s_mode_t>(I2S_MODE_MASTER | I2S_MODE_TX),
-    .sample_rate = _sampleRate,
+    .sample_rate = usamplerate,
     .bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT,
     .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT,
 #if ESP_IDF_VERSION_MAJOR > 3

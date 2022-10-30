@@ -13,7 +13,7 @@ public:
 	
 	template <typename T> 
 	T process(T in){
-		float fout;
+		float fout=0;
 		float fprev= (float)in;
 		for(int i=0; i<_ncascs;i++){
 			fout= fprev * _b0[i] + _z1[i];
